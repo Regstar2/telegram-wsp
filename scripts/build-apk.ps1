@@ -10,22 +10,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$telegram = [System.IO.Path]::GetFullPath((Join-Path $root $TelegramPath))
+$variant = if ($Full) { 'standalone' } else { 'prototype' }
+$apk = Join-Path $telegram "TMessagesProj_AppStandalone/build/outputs/apk/afat/$variant/app.apk"
+
+# Remove any previously built APK before preparation starts. If preparation or
+# the build fails, there must be no stale artifact left that can be installed
+# and mistaken for the current source revision.
+Remove-Item -Force $apk -ErrorAction SilentlyContinue
 
 if (-not $SkipPrepare) {
     & (Join-Path $PSScriptRoot 'prepare-integration.ps1')
 }
 
-$telegram = [System.IO.Path]::GetFullPath((Join-Path $root $TelegramPath))
-
 if (-not (Test-Path (Join-Path $telegram '.git'))) {
     throw "Telegram checkout not found: $telegram"
 }
-
-$variant = if ($Full) { 'standalone' } else { 'prototype' }
-$apk = Join-Path $telegram "TMessagesProj_AppStandalone/build/outputs/apk/afat/$variant/app.apk"
-
-# A failed build must never leave a stale APK that can be installed by mistake.
-Remove-Item -Force $apk -ErrorAction SilentlyContinue
 
 & (Join-Path $PSScriptRoot 'ensure-telegram-theme-assets-lf.ps1') -TelegramPath $telegram
 
