@@ -51,8 +51,19 @@ if ($buildVars -notmatch 'public static boolean SUPPORTS_PASSKEYS = false;') {
 
 $bootstrapPath = Join-Path $telegram 'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
 $bootstrap = Get-Content $bootstrapPath -Raw
-if ($bootstrap -notmatch '@connection_mode=cf_first') {
-    throw 'Embedded TgWsProxy runtime is not configured for cf_first.'
+if ($bootstrap -notmatch 'TgWsProxyController\.start\(appContext\)') {
+    throw 'Embedded TgWsProxy bootstrap does not delegate runtime startup to TgWsProxyController.'
+}
+
+$controllerPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
+if (-not (Test-Path $controllerPath)) {
+    throw "Prepared TgWsProxy controller not found: $controllerPath"
+}
+$controller = Get-Content $controllerPath -Raw
+if ($controller -notmatch '@route_order=' -or
+    $controller -notmatch '(?s)direct_ws.*cf_proxy_ws.*awg_warp.*cf_worker_ws' -or
+    $controller -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws') {
+    throw 'Prepared TgWsProxy controller does not contain the required Wi-Fi/mobile route policies.'
 }
 
 $gradle = Get-Command gradle -ErrorAction SilentlyContinue
