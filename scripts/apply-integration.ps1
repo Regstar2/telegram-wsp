@@ -481,7 +481,8 @@ if (-not $proxyList.Contains('proxyShadowRow || position == tgWsProxyShadowRow')
 
 $proxyTypeTextMarker = '            } else if (position == proxyAddRow || position == deleteAllRow) {'
 $proxyTypeTextBlock = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
-if (-not $proxyList.Contains('position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow')) {
+$proxyTypeTextApplied = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
+if (-not $proxyList.Contains($proxyTypeTextApplied)) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeTextMarker))).Count
     if ($count -ne 1) { throw "ProxyList text type anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyTypeTextMarker, $proxyTypeTextBlock)
