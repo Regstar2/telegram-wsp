@@ -254,7 +254,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
 
         TextInfoPrivacyCell workerInfo = new TextInfoPrivacyCell(context);
         workerInfo.setText(
-                "Proxy Worker участвуют в маршруте Telegram. Amnezia Worker используются только для создания WARP-профиля."
+                "Proxy Worker участвуют в маршруте Telegram. Пользовательские Amnezia Worker используются только для создания WARP-профиля; дополнительно всегда доступны 3 встроенных provisioning Worker проекта."
         );
         content.addView(workerInfo, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
