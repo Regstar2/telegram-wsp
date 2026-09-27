@@ -435,10 +435,11 @@ if (-not $proxyList.Contains('tgWsProxyRow = rowCount++;')) {
 $proxyBindMarker = '                    if (position == proxyAddRow) {'
 $proxyBindBlock = @'
                     if (position == tgWsProxyRow) {
-                        textCell.setTextAndValue("Встроенный прокси", "Telegram-WSP", false);
+                        // TGWSP_SETTINGS_ROW
+                        textCell.setTextAndValue("\u0412\u0441\u0442\u0440\u043e\u0435\u043d\u043d\u044b\u0439 \u043f\u0440\u043e\u043a\u0441\u0438", "Telegram-WSP", false);
                     } else if (position == proxyAddRow) {
 '@.TrimEnd()
-if (-not $proxyList.Contains('textCell.setTextAndValue("Встроенный прокси"')) {
+if (-not $proxyList.Contains('// TGWSP_SETTINGS_ROW')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyBindMarker))).Count
     if ($count -ne 1) { throw "ProxyList bind anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyBindMarker, $proxyBindBlock)
