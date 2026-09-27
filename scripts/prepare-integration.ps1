@@ -12,6 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 $telegramPath = Join-Path $root '.work/telegram'
 $corePath = Join-Path $root '.work/tgwsproxy-core'
 $coreAar = Join-Path $corePath 'core/build/outputs/aar/core-release.aar'
+$coreAarStamp = Join-Path $corePath 'core/build/outputs/aar/core-release.commit'
 
 $upstream = Get-Content (Join-Path $root 'config/upstream.json') -Raw | ConvertFrom-Json
 $coreConfig = Get-Content (Join-Path $root 'config/core.json') -Raw | ConvertFrom-Json
@@ -52,6 +53,15 @@ if ($Force) {
     }
 }
 
+$coreAarCommit = $null
+if (Test-Path $coreAarStamp) {
+    $coreAarCommit = (Get-Content $coreAarStamp -Raw).Trim()
+}
+if ((Test-Path $coreAar) -and $coreAarCommit -ne $coreCommit) {
+    Write-Host "Core AAR is stale or unverified; rebuilding for $coreCommit"
+    $RebuildCore = $true
+}
+
 if ($RebuildCore -or -not (Test-Path $coreAar)) {
     if ($VerifyCore) {
         & (Join-Path $PSScriptRoot 'build-core.ps1') -WithTests
@@ -59,7 +69,7 @@ if ($RebuildCore -or -not (Test-Path $coreAar)) {
         & (Join-Path $PSScriptRoot 'build-core.ps1')
     }
 } else {
-    Write-Host "Reusing core AAR: $coreAar"
+    Write-Host "Reusing core AAR for $coreAarCommit : $coreAar"
 }
 
 & (Join-Path $PSScriptRoot 'apply-integration.ps1')
