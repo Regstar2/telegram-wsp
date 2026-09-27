@@ -1162,7 +1162,9 @@ public final class TgWsProxyController {
     }
 
     private static void ensureDefaultAwgWorkers(SharedPreferences preferences) {
-        if (preferences.contains(KEY_AWG_WORKERS)) {
+        String current = preferences.getString(KEY_AWG_WORKERS, null);
+        boolean explicitlyChecked = preferences.contains(KEY_AWG_WORKERS_LAST_CHECK);
+        if (current != null && (!current.trim().isEmpty() || explicitlyChecked)) {
             return;
         }
         preferences.edit()
