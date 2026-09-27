@@ -86,6 +86,15 @@ public final class TgWsProxyController {
             "awzwsldi.com", "clngqrflngqin.com", "tjacxbqtj.com", "bxaxtxmrw.com", "dmohrsgmohcrwb.com"
     ));
 
+    // Keep these provisioning-only defaults in sync with
+    // Regstar2/tg-ws-proxy-android BuiltInWarpProvisioningWorkers.
+    // They are never added to the Telegram cf_worker_ws pool.
+    private static final List<String> BUILT_IN_AWG_WORKERS = Arrays.asList(
+            "floral-surf-cc2c.awpmxkmo.workers.dev",
+            "lucky-frog-795f.ixmxdpw8.workers.dev",
+            "steep-snow-3ae9.4048pm01.workers.dev"
+    );
+
     private static final String AWG_I1 =
             "<r 2><b 0x858000010001000000000669636c6f756403636f6d0000010001c00c000100010000105a00044d583737>";
 
@@ -143,6 +152,7 @@ public final class TgWsProxyController {
     public static UiState getUiState(Context context) {
         Context appContext = context.getApplicationContext();
         SharedPreferences prefs = prefs(appContext);
+        ensureDefaultAwgWorkers(prefs);
         boolean enabled = prefs.getBoolean(KEY_ENABLED, true);
         TgWsProxyStatus status = null;
         try {
@@ -164,7 +174,7 @@ public final class TgWsProxyController {
 
         String manual = prefs.getString(KEY_CF_MANUAL, "");
         String proxyWorkers = prefs.getString(KEY_PROXY_WORKERS, "");
-        String awgWorkers = prefs.getString(KEY_AWG_WORKERS, "");
+        String awgWorkers = awgWorkersText(prefs);
         int proxyCount = splitStoredHosts(proxyWorkers).size();
         int awgCount = splitStoredHosts(awgWorkers).size();
 
@@ -440,7 +450,7 @@ public final class TgWsProxyController {
             return new RegistrationResult(direct, null);
         }
 
-        for (String worker : splitStoredHosts(prefs(context).getString(KEY_AWG_WORKERS, ""))) {
+        for (String worker : splitStoredHosts(awgWorkersText(prefs(context)))) {
             TgWsProxyWorkerHealthResult health =
                     TgWsProxyCore.INSTANCE.checkConsumerWarpWorker(worker, 5_000L);
             if (!health.getSuccess()) {
@@ -477,7 +487,7 @@ public final class TgWsProxyController {
             }
         }
 
-        for (String worker : splitStoredHosts(prefs(context).getString(KEY_AWG_WORKERS, ""))) {
+        for (String worker : splitStoredHosts(awgWorkersText(prefs(context)))) {
             if (worker.equals(transportWorker)) {
                 continue;
             }
@@ -717,12 +727,16 @@ public final class TgWsProxyController {
 
         List<String> order = new ArrayList<>();
         if (ROUTE_AUTO.equals(routeMode)) {
+            order.add("cf_proxy_ws");
+            if (awgReady) {
+                order.add("awg_warp");
+            }
+            if (workerReady) {
+                order.add("cf_worker_ws");
+            }
             if (wifi) {
                 order.add("direct_ws");
             }
-            order.add("cf_proxy_ws");
-            order.add("awg_warp");
-            order.add("cf_worker_ws");
         } else if (ROUTE_CF_PROXY.equals(routeMode)) {
             order.add("cf_proxy_ws");
         } else if (ROUTE_AWG.equals(routeMode)) {
@@ -1063,7 +1077,7 @@ public final class TgWsProxyController {
     }
 
     private static String backendLabel(String backend) {
-        if (backend == null || backend.isEmpty()) {
+        if (backend == null || backend.isEmpty() || "none".equalsIgnoreCase(backend)) {
             return "";
         }
         if ("direct_ws".equals(backend)) {
@@ -1145,6 +1159,21 @@ public final class TgWsProxyController {
 
     private static int bool(boolean value) {
         return value ? 1 : 0;
+    }
+
+    private static void ensureDefaultAwgWorkers(SharedPreferences preferences) {
+        if (preferences.contains(KEY_AWG_WORKERS)) {
+            return;
+        }
+        preferences.edit()
+                .putString(KEY_AWG_WORKERS, join(BUILT_IN_AWG_WORKERS, "\n"))
+                .apply();
+    }
+
+    private static String awgWorkersText(SharedPreferences preferences) {
+        ensureDefaultAwgWorkers(preferences);
+        String value = preferences.getString(KEY_AWG_WORKERS, "");
+        return value == null ? "" : value;
     }
 
     private static SharedPreferences prefs(Context context) {
