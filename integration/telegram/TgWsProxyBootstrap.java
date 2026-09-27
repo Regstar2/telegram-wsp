@@ -38,7 +38,7 @@ import io.github.regstar2.tgwsproxy.core.TgWsProxyCore;
 import io.github.regstar2.tgwsproxy.core.TgWsProxyOperationResult;
 import io.github.regstar2.tgwsproxy.core.TgWsProxyStatus;
 
-final class TgWsProxyBootstrap {
+public final class TgWsProxyBootstrap {
     private static final String PREFS = "tgwsproxy";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_SECRET = "secret";
@@ -67,7 +67,7 @@ final class TgWsProxyBootstrap {
     private TgWsProxyBootstrap() {
     }
 
-    static void start(Context context) {
+    public static void start(Context context) {
         synchronized (TgWsProxyBootstrap.class) {
             if (initialized) {
                 return;
@@ -94,49 +94,9 @@ final class TgWsProxyBootstrap {
 
     private static void startInBackground(Context appContext) {
         try {
-            SharedPreferences integrationPrefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (!integrationPrefs.getBoolean(KEY_ENABLED, true) || !supportsArm64()) {
-                disableManagedProxy(appContext, integrationPrefs);
-                return;
-            }
-
-            String secret = getOrCreateSecret(integrationPrefs);
-            String runtimeConfig = integrationPrefs.getString(KEY_RUNTIME_CONFIG, DEFAULT_RUNTIME_CONFIG);
-            if (runtimeConfig == null || LEGACY_RUNTIME_CONFIG.equals(runtimeConfig.trim())) {
-                runtimeConfig = DEFAULT_RUNTIME_CONFIG;
-                integrationPrefs.edit().putString(KEY_RUNTIME_CONFIG, runtimeConfig).apply();
-            }
-
-            TgWsProxyConfig config = new TgWsProxyConfig(HOST, PORT, secret, runtimeConfig, BuildVars.LOGS_ENABLED);
-            TgWsProxyOperationResult result = TgWsProxyCore.INSTANCE.start(config);
-            logRuntimeState(result);
-
-            if (!result.getSuccess()) {
-                FileLog.e("TgWsProxy core start failed: " + result.getMessage());
-                disableManagedProxy(appContext, integrationPrefs);
-                return;
-            }
-
-            SharedPreferences telegramPrefs = appContext.getSharedPreferences("mainconfig", Context.MODE_PRIVATE);
-            boolean stored = telegramPrefs.edit()
-                    .putBoolean("proxy_enabled", true)
-                    .putString("proxy_ip", HOST)
-                    .putInt("proxy_port", PORT)
-                    .putString("proxy_user", "")
-                    .putString("proxy_pass", "")
-                    .putString("proxy_secret", secret)
-                    .commit();
-
-            if (!stored) {
-                FileLog.e("TgWsProxy could not persist Telegram proxy settings");
-                TgWsProxyCore.INSTANCE.stop();
-                return;
-            }
-
-            integrationPrefs.edit().putBoolean(KEY_MANAGED_PROXY, true).apply();
-            applyTelegramProxy(true, secret);
+            TgWsProxyController.start(appContext);
         } catch (Throwable error) {
-            FileLog.e("TgWsProxy bootstrap failed: " + error);
+            FileLog.e("TgWsProxy bootstrap failed: " + error.getClass().getSimpleName());
         }
     }
 
@@ -506,36 +466,6 @@ final class TgWsProxyBootstrap {
                     Toast.LENGTH_LONG
             ).show();
         }
-    }
-
-    private static void logRuntimeState(TgWsProxyOperationResult result) {
-        TgWsProxyStatus status = result.getStatus();
-        if (status == null) {
-            FileLog.d("TgWsProxy runtime status unavailable after start");
-            return;
-        }
-
-        FileLog.d(
-                "TgWsProxy runtime success=" + result.getSuccess()
-                        + " state=" + status.getState()
-                        + " host=" + status.getHost()
-                        + " port=" + status.getPort()
-                        + " outbound=" + status.getOutbound()
-                        + " selected_backend=" + status.getSelectedBackend()
-                        + " actual_backend=" + status.getActualBackend()
-                        + " fallback_used=" + status.getFallbackUsed()
-                        + " route_reason=" + status.getRouteReason()
-                        + " last_error=" + status.getLastError()
-        );
-
-        Map<String, String> transport = TgWsProxyCore.INSTANCE.transportStatus();
-        FileLog.d(
-                "TgWsProxy transport running=" + transport.get("running")
-                        + " mode=" + transport.get("mode")
-                        + " active_route_kind=" + transport.get("active_route_kind")
-                        + " transport_type=" + transport.get("transport_type")
-                        + " last_error=" + transport.get("last_error")
-        );
     }
 
     private static void disableManagedProxy(Context context, SharedPreferences integrationPrefs) {

@@ -71,19 +71,6 @@ Set-Content -Path $brandingManifestGenerated -Value $brandingManifest -NoNewline
 $buildPath = Join-Path $telegram 'TMessagesProj_AppStandalone/build.gradle'
 $build = Get-Content $buildPath -Raw
 
-$dependencyMarker = "    implementation project(':TMessagesProj')"
-$dependencyBlock = @"
-    implementation project(':TMessagesProj')
-    implementation files('../.tgwsproxy/tgwsproxy-core.aar')
-    implementation 'net.java.dev.jna:jna:5.14.0@aar'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
-"@.TrimEnd()
-if ($build -notmatch [regex]::Escape('tgwsproxy-core.aar')) {
-    $count = ([regex]::Matches($build, [regex]::Escape($dependencyMarker))).Count
-    if ($count -ne 1) { throw "Gradle dependency anchor count is $count; expected 1." }
-    $build = $build.Replace($dependencyMarker, $dependencyBlock)
-}
-
 $appStandaloneMarker = @'
         standalone {
             matchingFallbacks = ['release']
@@ -214,6 +201,19 @@ Set-Content -Path $buildPath -Value $build -NoNewline
 
 $coreBuildPath = Join-Path $telegram 'TMessagesProj/build.gradle'
 $coreBuild = Get-Content $coreBuildPath -Raw
+
+$coreDependencyMarker = "    implementation 'androidx.core:core:1.16.0'"
+$coreDependencyBlock = @"
+    implementation files('../.tgwsproxy/tgwsproxy-core.aar')
+    implementation 'net.java.dev.jna:jna:5.14.0@aar'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'androidx.core:core:1.16.0'
+"@.TrimEnd()
+if ($coreBuild -notmatch [regex]::Escape('tgwsproxy-core.aar')) {
+    $count = ([regex]::Matches($coreBuild, [regex]::Escape($coreDependencyMarker))).Count
+    if ($count -ne 1) { throw "Telegram core dependency anchor count is $count; expected 1." }
+    $coreBuild = $coreBuild.Replace($coreDependencyMarker, $coreDependencyBlock)
+}
 
 $apiGradleMarker = @'
     defaultConfig {
@@ -378,9 +378,109 @@ if ($loader -notmatch [regex]::Escape('TgWsProxyBootstrap.start(this);')) {
     Set-Content -Path $loaderPath -Value $loader -NoNewline
 }
 
-$overlay = Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java'
+$bootstrapOverlay = Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java'
 $bootstrapPath = Join-Path $telegram 'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
-Copy-Item -Force $overlay $bootstrapPath
+Copy-Item -Force $bootstrapOverlay $bootstrapPath
+
+$controllerOverlay = Join-Path $root 'integration/telegram/TgWsProxyController.java'
+$controllerPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
+Copy-Item -Force $controllerOverlay $controllerPath
+
+$settingsOverlay = Join-Path $root 'integration/telegram/TgWsProxySettingsActivity.java'
+$settingsPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java'
+Copy-Item -Force $settingsOverlay $settingsPath
+
+$proxyListPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java'
+$proxyList = Get-Content $proxyListPath -Raw
+
+$proxyFieldMarker = '    private int proxyAddRow;'
+$proxyFieldBlock = @'
+    private int tgWsProxyRow;
+    private int tgWsProxyShadowRow;
+    private int proxyAddRow;
+'@.TrimEnd()
+if ($proxyList -notmatch 'private int tgWsProxyRow;') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyFieldMarker))).Count
+    if ($count -ne 1) { throw "ProxyList field anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyFieldMarker, $proxyFieldBlock)
+}
+
+$proxyClickMarker = '            } else if (position == proxyAddRow) {'
+$proxyClickBlock = @'
+            } else if (position == tgWsProxyRow) {
+                presentFragment(new TgWsProxySettingsActivity());
+            } else if (position == proxyAddRow) {
+'@.TrimEnd()
+if ($proxyList -notmatch 'position == tgWsProxyRow') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyClickMarker))).Count
+    if ($count -ne 1) { throw "ProxyList click anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyClickMarker, $proxyClickBlock)
+}
+
+$proxyRowsMarker = '        connectionsHeaderRow = rowCount++;'
+$proxyRowsBlock = @'
+        tgWsProxyRow = rowCount++;
+        tgWsProxyShadowRow = rowCount++;
+        connectionsHeaderRow = rowCount++;
+'@.TrimEnd()
+if ($proxyList -notmatch 'tgWsProxyRow = rowCount++;') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyRowsMarker))).Count
+    if ($count -ne 1) { throw "ProxyList rows anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyRowsMarker, $proxyRowsBlock)
+}
+
+$proxyBindMarker = '                    if (position == proxyAddRow) {'
+$proxyBindBlock = @'
+                    if (position == tgWsProxyRow) {
+                        textCell.setTextAndValue("Встроенный прокси", "Telegram-WSP", false);
+                    } else if (position == proxyAddRow) {
+'@.TrimEnd()
+if ($proxyList -notmatch 'textCell.setTextAndValue("Встроенный прокси"') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyBindMarker))).Count
+    if ($count -ne 1) { throw "ProxyList bind anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyBindMarker, $proxyBindBlock)
+}
+
+$proxyEnabledMarker = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
+$proxyEnabledBlock = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
+if ($proxyList -notmatch 'position == tgWsProxyRow || position == proxyAddRow') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyEnabledMarker))).Count
+    if ($count -ne 1) { throw "ProxyList enabled anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyEnabledMarker, $proxyEnabledBlock)
+}
+
+$proxyIdMarker = '            } else if (position == proxyAddRow) {\n                return -3;'
+$proxyIdBlock = @'
+            } else if (position == tgWsProxyRow) {
+                return -12;
+            } else if (position == tgWsProxyShadowRow) {
+                return -13;
+            } else if (position == proxyAddRow) {
+                return -3;
+'@.TrimEnd()
+if ($proxyList -notmatch 'position == tgWsProxyShadowRow') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyIdMarker))).Count
+    if ($count -ne 1) { throw "ProxyList stable-id anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyIdMarker, $proxyIdBlock)
+}
+
+$proxyTypeShadowMarker = '            if (position == useProxyShadowRow || position == proxyShadowRow) {'
+$proxyTypeShadowBlock = '            if (position == useProxyShadowRow || position == proxyShadowRow || position == tgWsProxyShadowRow) {'
+if ($proxyList -notmatch 'proxyShadowRow || position == tgWsProxyShadowRow') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeShadowMarker))).Count
+    if ($count -ne 1) { throw "ProxyList shadow type anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyTypeShadowMarker, $proxyTypeShadowBlock)
+}
+
+$proxyTypeTextMarker = '            } else if (position == proxyAddRow || position == deleteAllRow) {'
+$proxyTypeTextBlock = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
+if ($proxyList -notmatch 'position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow') {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeTextMarker))).Count
+    if ($count -ne 1) { throw "ProxyList text type anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyTypeTextMarker, $proxyTypeTextBlock)
+}
+
+Set-Content -Path $proxyListPath -Value $proxyList -NoNewline
 
 $generatedThemeAssets = @(Get-ChildItem $themeAssetsGenerated -File -Filter '*.attheme')
 if ($generatedThemeAssets.Count -eq 0) {
@@ -424,6 +524,9 @@ $changed = @(
 $expected = @(
     'TMessagesProj/build.gradle',
     'TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java',
+    'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java',
+    'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java',
+    'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java',
     'TMessagesProj_AppStandalone/build.gradle',
     'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/ApplicationLoaderImpl.java',
     'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
@@ -431,7 +534,7 @@ $expected = @(
 foreach ($path in $expected) {
     if ($changed -notcontains $path) { throw "Expected integration change is missing: $path" }
 }
-if ($changed.Count -gt 5) { throw "Integration diff budget exceeded: $($changed.Count) upstream files." }
+if ($changed.Count -gt 8) { throw "Integration diff budget exceeded: $($changed.Count) upstream files." }
 
 Write-Host "Integration applied to Telegram $actual"
 Write-Host "Upstream source diff: $($changed.Count) files"
