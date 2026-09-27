@@ -152,7 +152,6 @@ public final class TgWsProxyController {
     public static UiState getUiState(Context context) {
         Context appContext = context.getApplicationContext();
         SharedPreferences prefs = prefs(appContext);
-        ensureDefaultAwgWorkers(prefs);
         boolean enabled = prefs.getBoolean(KEY_ENABLED, true);
         TgWsProxyStatus status = null;
         try {
@@ -174,7 +173,7 @@ public final class TgWsProxyController {
 
         String manual = prefs.getString(KEY_CF_MANUAL, "");
         String proxyWorkers = prefs.getString(KEY_PROXY_WORKERS, "");
-        String awgWorkers = awgWorkersText(prefs);
+        String awgWorkers = prefs.getString(KEY_AWG_WORKERS, "");
         int proxyCount = splitStoredHosts(proxyWorkers).size();
         int awgCount = splitStoredHosts(awgWorkers).size();
 
@@ -190,6 +189,7 @@ public final class TgWsProxyController {
                 proxyWorkers == null ? "" : proxyWorkers,
                 awgWorkers == null ? "" : awgWorkers,
                 "Proxy: " + proxyCount + " · Amnezia: " + awgCount
+                        + " + " + BUILT_IN_AWG_WORKERS.size() + " встроенных"
         );
     }
 
@@ -450,7 +450,7 @@ public final class TgWsProxyController {
             return new RegistrationResult(direct, null);
         }
 
-        for (String worker : splitStoredHosts(awgWorkersText(prefs(context)))) {
+        for (String worker : awgProvisioningWorkers(prefs(context))) {
             TgWsProxyWorkerHealthResult health =
                     TgWsProxyCore.INSTANCE.checkConsumerWarpWorker(worker, 5_000L);
             if (!health.getSuccess()) {
@@ -487,7 +487,7 @@ public final class TgWsProxyController {
             }
         }
 
-        for (String worker : splitStoredHosts(awgWorkersText(prefs(context)))) {
+        for (String worker : awgProvisioningWorkers(prefs(context))) {
             if (worker.equals(transportWorker)) {
                 continue;
             }
@@ -1161,21 +1161,11 @@ public final class TgWsProxyController {
         return value ? 1 : 0;
     }
 
-    private static void ensureDefaultAwgWorkers(SharedPreferences preferences) {
-        String current = preferences.getString(KEY_AWG_WORKERS, null);
-        boolean explicitlyChecked = preferences.contains(KEY_AWG_WORKERS_LAST_CHECK);
-        if (current != null && (!current.trim().isEmpty() || explicitlyChecked)) {
-            return;
-        }
-        preferences.edit()
-                .putString(KEY_AWG_WORKERS, join(BUILT_IN_AWG_WORKERS, "\n"))
-                .apply();
-    }
-
-    private static String awgWorkersText(SharedPreferences preferences) {
-        ensureDefaultAwgWorkers(preferences);
-        String value = preferences.getString(KEY_AWG_WORKERS, "");
-        return value == null ? "" : value;
+    private static List<String> awgProvisioningWorkers(SharedPreferences preferences) {
+        List<String> candidates =
+                new ArrayList<>(splitStoredHosts(preferences.getString(KEY_AWG_WORKERS, "")));
+        candidates.addAll(BUILT_IN_AWG_WORKERS);
+        return dedupe(candidates);
     }
 
     private static SharedPreferences prefs(Context context) {
