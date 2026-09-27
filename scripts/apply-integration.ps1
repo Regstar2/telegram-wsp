@@ -399,7 +399,7 @@ $proxyFieldBlock = @'
     private int tgWsProxyShadowRow;
     private int proxyAddRow;
 '@.TrimEnd()
-if ($proxyList -notmatch 'private int tgWsProxyRow;') {
+if (-not $proxyList.Contains('    private int tgWsProxyRow;')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyFieldMarker))).Count
     if ($count -ne 1) { throw "ProxyList field anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyFieldMarker, $proxyFieldBlock)
@@ -411,7 +411,7 @@ $proxyClickBlock = @'
                 presentFragment(new TgWsProxySettingsActivity());
             } else if (position == proxyAddRow) {
 '@.TrimEnd()
-if ($proxyList -notmatch 'position == tgWsProxyRow') {
+if (-not $proxyList.Contains('position == tgWsProxyRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyClickMarker))).Count
     if ($count -ne 1) { throw "ProxyList click anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyClickMarker, $proxyClickBlock)
@@ -423,7 +423,7 @@ $proxyRowsBlock = @'
         tgWsProxyShadowRow = rowCount++;
         connectionsHeaderRow = rowCount++;
 '@.TrimEnd()
-if ($proxyList -notmatch 'tgWsProxyRow = rowCount++;') {
+if (-not $proxyList.Contains('tgWsProxyRow = rowCount++;')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyRowsMarker))).Count
     if ($count -ne 1) { throw "ProxyList rows anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyRowsMarker, $proxyRowsBlock)
@@ -435,7 +435,7 @@ $proxyBindBlock = @'
                         textCell.setTextAndValue("Встроенный прокси", "Telegram-WSP", false);
                     } else if (position == proxyAddRow) {
 '@.TrimEnd()
-if ($proxyList -notmatch 'textCell.setTextAndValue("Встроенный прокси"') {
+if (-not $proxyList.Contains('textCell.setTextAndValue("Встроенный прокси"')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyBindMarker))).Count
     if ($count -ne 1) { throw "ProxyList bind anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyBindMarker, $proxyBindBlock)
@@ -443,13 +443,16 @@ if ($proxyList -notmatch 'textCell.setTextAndValue("Встроенный про�
 
 $proxyEnabledMarker = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
 $proxyEnabledBlock = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
-if ($proxyList -notmatch 'position == tgWsProxyRow || position == proxyAddRow') {
+if (-not $proxyList.Contains('position == tgWsProxyRow || position == proxyAddRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyEnabledMarker))).Count
     if ($count -ne 1) { throw "ProxyList enabled anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyEnabledMarker, $proxyEnabledBlock)
 }
 
-$proxyIdMarker = '            } else if (position == proxyAddRow) {\n                return -3;'
+$proxyIdMarker = @'
+            } else if (position == proxyAddRow) {
+                return -3;
+'@.TrimEnd()
 $proxyIdBlock = @'
             } else if (position == tgWsProxyRow) {
                 return -12;
@@ -458,7 +461,7 @@ $proxyIdBlock = @'
             } else if (position == proxyAddRow) {
                 return -3;
 '@.TrimEnd()
-if ($proxyList -notmatch 'position == tgWsProxyShadowRow') {
+if (-not $proxyList.Contains('position == tgWsProxyShadowRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyIdMarker))).Count
     if ($count -ne 1) { throw "ProxyList stable-id anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyIdMarker, $proxyIdBlock)
@@ -466,7 +469,7 @@ if ($proxyList -notmatch 'position == tgWsProxyShadowRow') {
 
 $proxyTypeShadowMarker = '            if (position == useProxyShadowRow || position == proxyShadowRow) {'
 $proxyTypeShadowBlock = '            if (position == useProxyShadowRow || position == proxyShadowRow || position == tgWsProxyShadowRow) {'
-if ($proxyList -notmatch 'proxyShadowRow || position == tgWsProxyShadowRow') {
+if (-not $proxyList.Contains('proxyShadowRow || position == tgWsProxyShadowRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeShadowMarker))).Count
     if ($count -ne 1) { throw "ProxyList shadow type anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyTypeShadowMarker, $proxyTypeShadowBlock)
@@ -474,7 +477,7 @@ if ($proxyList -notmatch 'proxyShadowRow || position == tgWsProxyShadowRow') {
 
 $proxyTypeTextMarker = '            } else if (position == proxyAddRow || position == deleteAllRow) {'
 $proxyTypeTextBlock = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
-if ($proxyList -notmatch 'position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow') {
+if (-not $proxyList.Contains('position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeTextMarker))).Count
     if ($count -ne 1) { throw "ProxyList text type anchor count is $count; expected 1." }
     $proxyList = $proxyList.Replace($proxyTypeTextMarker, $proxyTypeTextBlock)

@@ -172,7 +172,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         workerTypeChooser.setCallback(index -> switchWorkerEditor(index == 1));
         workerTypeChooser.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
         content.addView(workerTypeChooser, LayoutHelper.createLinear(
-                LayoutHelper.MATCH_PARENT, 50
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
         workerEdit = multilineEditor(context, "Worker — один hostname на строку");
