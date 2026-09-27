@@ -545,6 +545,13 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     if ($preparedProxyList -notmatch 'new TgWsProxySettingsActivity\(\)') {
         throw 'Telegram ProxyListActivity does not expose the embedded proxy settings entry.'
     }
+    if ($preparedProxyList -notmatch 'tgWsProxyRow = rowCount\+\+;' -or
+        $preparedProxyList -notmatch 'position == tgWsProxyRow \|\| position == proxyAddRow \|\| position == deleteAllRow') {
+        throw 'Telegram ProxyListActivity does not render the embedded proxy row as a visible text setting.'
+    }
+    if ($preparedProxyList -notmatch 'TGWSP_SETTINGS_ROW') {
+        throw 'Telegram ProxyListActivity does not bind the embedded proxy row label.'
+    }
 
     if ($preparedCoreBuild -notmatch 'tgwsproxy-core\.aar') {
         throw 'Prepared Telegram core module does not depend on the pinned tgwsproxy-core AAR.'
