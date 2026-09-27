@@ -525,7 +525,7 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
 
     $preparedController = Get-Content $preparedControllerPath -Raw
     if ($preparedController -notmatch '@route_order=' -or
-        $preparedController -notmatch '(?s)direct_ws.*cf_proxy_ws.*awg_warp.*cf_worker_ws' -or
+        $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws.*direct_ws' -or
         $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws') {
         throw 'Prepared TgWsProxy controller does not contain the required Wi-Fi/mobile ordered route policies.'
     }
