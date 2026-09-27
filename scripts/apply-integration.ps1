@@ -405,7 +405,10 @@ if (-not $proxyList.Contains('    private int tgWsProxyRow;')) {
     $proxyList = $proxyList.Replace($proxyFieldMarker, $proxyFieldBlock)
 }
 
-$proxyClickMarker = '            } else if (position == proxyAddRow) {'
+$proxyClickMarker = @'
+            } else if (position == proxyAddRow) {
+                presentFragment(new ProxySettingsActivity());
+'@.TrimEnd()
 $proxyClickBlock = @'
             } else if (position == tgWsProxyRow) {
                 presentFragment(new TgWsProxySettingsActivity());
