@@ -4,22 +4,25 @@ Telegram-specific интеграция связывает чистый upstream 
 
 ## Текущая реализация
 
-Overlay состоит из одного собственного Java-файла:
+Overlay добавляет три собственных Java-файла:
 
 ```text
 integration/telegram/TgWsProxyBootstrap.java
+integration/telegram/TgWsProxyController.java
+integration/telegram/TgWsProxySettingsActivity.java
 ```
 
-и четырёх точечных изменений upstream:
+и точечно патчит пять существующих upstream-файлов:
 
 ```text
 TMessagesProj/build.gradle
 TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java
 TMessagesProj_AppStandalone/build.gradle
 TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/ApplicationLoaderImpl.java
 ```
 
-Итого source-level diff: **5 upstream-файлов**, `tgnet` не изменяется.
+Итого prepared source-level diff: **8 upstream-путей**, `tgnet` не изменяется.
 
 ## Startup path
 
@@ -28,6 +31,8 @@ ApplicationLoaderImpl.onCreate()
         ↓
 TgWsProxyBootstrap.start()
         ↓
+TgWsProxyController.start()
+        ↓
 TgWsProxyCore.start()
         ↓
 127.0.0.1:1443
@@ -35,7 +40,14 @@ TgWsProxyCore.start()
 ConnectionsManager.setProxySettings(...)
 ```
 
-Bootstrap генерирует локальный 16-byte MTProto secret при первом запуске, сохраняет его только в application SharedPreferences и использует один и тот же secret для локального listener и штатного Telegram proxy API. Встроенный runtime по умолчанию использует `connection_mode=cf_first`: сначала `cf_proxy_ws`, затем разрешённые fallback-маршруты.
+Controller генерирует локальный 16-byte MTProto secret при первом запуске, сохраняет его только в application SharedPreferences и использует один и тот же secret для локального listener и штатного Telegram proxy API.
+
+В автоматическом режиме route policy задаётся так:
+
+- Wi-Fi: `cf_proxy_ws → awg_warp → cf_worker_ws → direct_ws`;
+- mobile: `cf_proxy_ws → awg_warp → cf_worker_ws`.
+
+AWG и Worker включаются в порядок только когда соответствующая конфигурация готова. UI доступен из штатного списка прокси Telegram через пункт «Встроенный прокси».
 
 Если core не запускается, managed localhost proxy не включается. Если ранее управляемый proxy был активен, bootstrap отключает только собственную конфигурацию и не сбрасывает произвольный сторонний proxy.
 
@@ -78,7 +90,7 @@ integration/branding/res/mipmap-anydpi-v26/tgwsproxy_launcher.xml
 3. заменяет только default `android:icon` / `android:roundIcon` на `@mipmap/tgwsproxy_launcher`;
 4. подключает generated manifest/resources через уже изменяемый `TMessagesProj_AppStandalone/build.gradle`.
 
-Для API < 26 используется legacy mipmap alias. Для API 26+ используется adaptive icon resource. Дополнительные Telegram resource-файлы не попадают в upstream source diff, поэтому лимит **5 upstream-файлов** сохраняется.
+Для API < 26 используется legacy mipmap alias. Для API 26+ используется adaptive icon resource. Дополнительные Telegram resource-файлы не попадают в upstream source diff, поэтому лимит **8 source-level upstream-путей** сохраняется.
 
 ## Telegram API credentials
 
@@ -174,5 +186,5 @@ Full signed release:
 - `TMessagesProj/jni/tgnet/` не патчится;
 - integration source находится только здесь;
 - изменение upstream anchor должно приводить к явному failure;
-- максимум 5 source-level upstream-файлов;
+- максимум 8 source-level upstream-путей;
 - бинарный AAR всегда воспроизводится из pinned `tgwsproxy-core` source.
