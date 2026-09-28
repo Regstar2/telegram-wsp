@@ -536,9 +536,15 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     $preparedSettings = Get-Content $preparedSettingsPath -Raw
     if ($preparedSettings -notmatch 'Создать автоматически' -or
         $preparedSettings -notmatch 'Импортировать \.conf' -or
+        $preparedSettings -notmatch 'Удалить профиль' -or
         $preparedSettings -notmatch 'Для прокси' -or
         $preparedSettings -notmatch 'Для Amnezia') {
         throw 'Prepared TgWsProxy settings screen is missing the accepted compact UI controls.'
+    }
+    if ($preparedController -notmatch 'deleteAwgProfileAsync' -or
+        $preparedSettings -notmatch 'Встроенный прокси выключен' -or
+        $preparedSettings -notmatch 'Активный backend:') {
+        throw 'Prepared TgWsProxy settings screen is missing the final runtime/WARP polish.'
     }
 
     $preparedProxyList = Get-Content $preparedProxyListPath -Raw
