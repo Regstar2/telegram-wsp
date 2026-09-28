@@ -157,6 +157,17 @@ $syncUpstreamScript = Get-Content (Join-Path $root 'scripts/sync-upstream.ps1') 
 if ($syncUpstreamScript -notmatch 'git ls-remote' -or $syncUpstreamScript -notmatch 'APP_VERSION_NAME' -or $syncUpstreamScript -notmatch 'APP_VERSION_CODE') {
     throw 'Upstream sync script must resolve the Telegram master commit and version metadata.'
 }
+$upstreamWorkflow = Get-Content (Join-Path $root '.github/workflows/upstream-sync.yml') -Raw
+$releaseWorkflow = Get-Content (Join-Path $root '.github/workflows/release.yml') -Raw
+foreach ($workflowText in @($upstreamWorkflow, $releaseWorkflow)) {
+    if ($workflowText -match 'android-actions/setup-android@v3') {
+        throw 'GitHub Actions must not use setup-android@v3 under Node 24.'
+    }
+    if ($workflowText -notmatch 'android-actions/setup-android@v4') {
+        throw 'GitHub Actions must use setup-android@v4.'
+    }
+}
+
 if ($syncUpstreamScript -notmatch 'master-ahead-without-version-bump') {
     throw 'Upstream sync must avoid publishing arbitrary master commits without a Telegram version bump.'
 }
