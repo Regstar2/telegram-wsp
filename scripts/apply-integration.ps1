@@ -71,42 +71,14 @@ Set-Content -Path $brandingManifestGenerated -Value $brandingManifest -NoNewline
 $buildPath = Join-Path $telegram 'TMessagesProj_AppStandalone/build.gradle'
 $build = Get-Content $buildPath -Raw
 
-$dependencyMarker = "    implementation project(':TMessagesProj')"
-$dependencyBlock = @"
-    implementation project(':TMessagesProj')
-    implementation files('../.tgwsproxy/tgwsproxy-core.aar')
-    implementation 'net.java.dev.jna:jna:5.14.0@aar'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
-"@.TrimEnd()
-if ($build -notmatch [regex]::Escape('tgwsproxy-core.aar')) {
-    $count = ([regex]::Matches($build, [regex]::Escape($dependencyMarker))).Count
-    if ($count -ne 1) { throw "Gradle dependency anchor count is $count; expected 1." }
-    $build = $build.Replace($dependencyMarker, $dependencyBlock)
-}
-
 $appStandaloneMarker = @'
-        standalone {
-            matchingFallbacks = ['release']
-            debuggable false
-            jniDebuggable false
-            signingConfig signingConfigs.release
-            applicationIdSuffix ".web"
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
             ndk.debugSymbolLevel = 'FULL'
         }
+    }
+
+    sourceSets.debug {
 '@.TrimEnd()
 $appPrototypeBlock = @'
-        standalone {
-            matchingFallbacks = ['release']
-            debuggable false
-            jniDebuggable false
-            signingConfig signingConfigs.release
-            applicationIdSuffix ".web"
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
             ndk.debugSymbolLevel = 'FULL'
         }
         prototype {
@@ -119,6 +91,9 @@ $appPrototypeBlock = @'
             multiDexEnabled true
             ndk.debugSymbolLevel = 'FULL'
         }
+    }
+
+    sourceSets.debug {
 '@.TrimEnd()
 if ($build -notmatch '(?m)^        prototype \{') {
     $count = ([regex]::Matches($build, [regex]::Escape($appStandaloneMarker))).Count
@@ -215,6 +190,19 @@ Set-Content -Path $buildPath -Value $build -NoNewline
 $coreBuildPath = Join-Path $telegram 'TMessagesProj/build.gradle'
 $coreBuild = Get-Content $coreBuildPath -Raw
 
+$coreDependencyMarker = "    implementation 'androidx.core:core:1.16.0'"
+$coreDependencyBlock = @"
+    implementation files('../.tgwsproxy/tgwsproxy-core.aar')
+    implementation 'net.java.dev.jna:jna:5.14.0@aar'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'androidx.core:core:1.16.0'
+"@.TrimEnd()
+if ($coreBuild -notmatch [regex]::Escape('tgwsproxy-core.aar')) {
+    $count = ([regex]::Matches($coreBuild, [regex]::Escape($coreDependencyMarker))).Count
+    if ($count -ne 1) { throw "Telegram core dependency anchor count is $count; expected 1." }
+    $coreBuild = $coreBuild.Replace($coreDependencyMarker, $coreDependencyBlock)
+}
+
 $apiGradleMarker = @'
     defaultConfig {
         minSdkVersion 21
@@ -265,36 +253,12 @@ if ($coreBuild -notmatch 'TGWS_PROXY_ARM64_ONLY') {
 }
 
 $coreStandaloneMarker = @'
-        standalone {
-            matchingFallbacks = ['release']
-            jniDebuggable false
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
-            ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
-            buildConfigField "String", "APP_CENTER_HASH", "\"\""
-            buildConfigField "String", "BETA_URL", "\"\""
-            buildConfigField "boolean", "DEBUG_VERSION", "false"
-            buildConfigField "boolean", "DEBUG_PRIVATE_VERSION", "false"
-            buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
+
+        release {
 '@.TrimEnd()
 $corePrototypeBlock = @'
-        standalone {
-            matchingFallbacks = ['release']
-            jniDebuggable false
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
-            ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
-            buildConfigField "String", "APP_CENTER_HASH", "\"\""
-            buildConfigField "String", "BETA_URL", "\"\""
-            buildConfigField "boolean", "DEBUG_VERSION", "false"
-            buildConfigField "boolean", "DEBUG_PRIVATE_VERSION", "false"
-            buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
 
@@ -312,6 +276,8 @@ $corePrototypeBlock = @'
             buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
+
+        release {
 '@.TrimEnd()
 if ($coreBuild -notmatch '(?m)^        prototype \{') {
     $count = ([regex]::Matches($coreBuild, [regex]::Escape($coreStandaloneMarker))).Count
@@ -378,9 +344,117 @@ if ($loader -notmatch [regex]::Escape('TgWsProxyBootstrap.start(this);')) {
     Set-Content -Path $loaderPath -Value $loader -NoNewline
 }
 
-$overlay = Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java'
+$bootstrapOverlay = Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java'
 $bootstrapPath = Join-Path $telegram 'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
-Copy-Item -Force $overlay $bootstrapPath
+Copy-Item -Force $bootstrapOverlay $bootstrapPath
+
+$controllerOverlay = Join-Path $root 'integration/telegram/TgWsProxyController.java'
+$controllerPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
+Copy-Item -Force $controllerOverlay $controllerPath
+
+$settingsOverlay = Join-Path $root 'integration/telegram/TgWsProxySettingsActivity.java'
+$settingsPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java'
+Copy-Item -Force $settingsOverlay $settingsPath
+
+$proxyListPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java'
+$proxyList = Get-Content $proxyListPath -Raw
+
+$proxyFieldMarker = '    private int proxyAddRow;'
+$proxyFieldBlock = @'
+    private int tgWsProxyRow;
+    private int tgWsProxyShadowRow;
+    private int proxyAddRow;
+'@.TrimEnd()
+if (-not $proxyList.Contains('    private int tgWsProxyRow;')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyFieldMarker))).Count
+    if ($count -ne 1) { throw "ProxyList field anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyFieldMarker, $proxyFieldBlock)
+}
+
+$proxyClickMarker = @'
+            } else if (position == proxyAddRow) {
+                presentFragment(new ProxySettingsActivity());
+'@.TrimEnd()
+$proxyClickBlock = @'
+            } else if (position == tgWsProxyRow) {
+                presentFragment(new TgWsProxySettingsActivity());
+            } else if (position == proxyAddRow) {
+'@.TrimEnd()
+if (-not $proxyList.Contains('position == tgWsProxyRow')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyClickMarker))).Count
+    if ($count -ne 1) { throw "ProxyList click anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyClickMarker, $proxyClickBlock)
+}
+
+$proxyRowsMarker = '        connectionsHeaderRow = rowCount++;'
+$proxyRowsBlock = @'
+        tgWsProxyRow = rowCount++;
+        tgWsProxyShadowRow = rowCount++;
+        connectionsHeaderRow = rowCount++;
+'@.TrimEnd()
+if (-not $proxyList.Contains('tgWsProxyRow = rowCount++;')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyRowsMarker))).Count
+    if ($count -ne 1) { throw "ProxyList rows anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyRowsMarker, $proxyRowsBlock)
+}
+
+$proxyBindMarker = '                    if (position == proxyAddRow) {'
+$proxyBindBlock = @'
+                    if (position == tgWsProxyRow) {
+                        // TGWSP_SETTINGS_ROW
+                        textCell.setTextAndValue("\u0412\u0441\u0442\u0440\u043e\u0435\u043d\u043d\u044b\u0439 \u043f\u0440\u043e\u043a\u0441\u0438", "Telegram-WSP", false);
+                    } else if (position == proxyAddRow) {
+'@.TrimEnd()
+if (-not $proxyList.Contains('// TGWSP_SETTINGS_ROW')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyBindMarker))).Count
+    if ($count -ne 1) { throw "ProxyList bind anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyBindMarker, $proxyBindBlock)
+}
+
+$proxyEnabledMarker = 'position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow'
+$proxyEnabledBlock = 'position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow'
+if (-not $proxyList.Contains('position == tgWsProxyRow || position == proxyAddRow')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyEnabledMarker))).Count
+    if ($count -ne 1) { throw "ProxyList enabled anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyEnabledMarker, $proxyEnabledBlock)
+}
+
+$proxyIdMarker = @'
+            } else if (position == proxyAddRow) {
+                return -3;
+'@.TrimEnd()
+$proxyIdBlock = @'
+            } else if (position == tgWsProxyRow) {
+                return -12;
+            } else if (position == tgWsProxyShadowRow) {
+                return -13;
+            } else if (position == proxyAddRow) {
+                return -3;
+'@.TrimEnd()
+if (-not $proxyList.Contains('position == tgWsProxyShadowRow')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyIdMarker))).Count
+    if ($count -ne 1) { throw "ProxyList stable-id anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyIdMarker, $proxyIdBlock)
+}
+
+$proxyTypeShadowMarker = '            if (position == useProxyShadowRow || position == proxyShadowRow) {'
+$proxyTypeShadowBlock = '            if (position == useProxyShadowRow || position == proxyShadowRow || position == tgWsProxyShadowRow) {'
+if (-not $proxyList.Contains('proxyShadowRow || position == tgWsProxyShadowRow')) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeShadowMarker))).Count
+    if ($count -ne 1) { throw "ProxyList shadow type anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyTypeShadowMarker, $proxyTypeShadowBlock)
+}
+
+$proxyTypeTextMarker = '            } else if (position == proxyAddRow || position == deleteAllRow) {'
+$proxyTypeTextBlock = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
+$proxyTypeTextApplied = '            } else if (position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow) {'
+if (-not $proxyList.Contains($proxyTypeTextApplied)) {
+    $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyTypeTextMarker))).Count
+    if ($count -ne 1) { throw "ProxyList text type anchor count is $count; expected 1." }
+    $proxyList = $proxyList.Replace($proxyTypeTextMarker, $proxyTypeTextBlock)
+}
+
+Set-Content -Path $proxyListPath -Value $proxyList -NoNewline
 
 $generatedThemeAssets = @(Get-ChildItem $themeAssetsGenerated -File -Filter '*.attheme')
 if ($generatedThemeAssets.Count -eq 0) {
@@ -424,6 +498,9 @@ $changed = @(
 $expected = @(
     'TMessagesProj/build.gradle',
     'TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java',
+    'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java',
+    'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java',
+    'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java',
     'TMessagesProj_AppStandalone/build.gradle',
     'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/ApplicationLoaderImpl.java',
     'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
@@ -431,7 +508,7 @@ $expected = @(
 foreach ($path in $expected) {
     if ($changed -notcontains $path) { throw "Expected integration change is missing: $path" }
 }
-if ($changed.Count -gt 5) { throw "Integration diff budget exceeded: $($changed.Count) upstream files." }
+if ($changed.Count -gt 8) { throw "Integration diff budget exceeded: $($changed.Count) upstream files." }
 
 Write-Host "Integration applied to Telegram $actual"
 Write-Host "Upstream source diff: $($changed.Count) files"

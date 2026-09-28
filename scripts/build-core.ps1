@@ -38,4 +38,15 @@ if ($LASTEXITCODE -ne 0) { throw "tgwsproxy-core Gradle build failed with exit c
 
 $artifact = Join-Path $coreFull 'core/build/outputs/aar/core-release.aar'
 if (-not (Test-Path $artifact)) { throw "Expected core AAR was not produced: $artifact" }
+
+$head = (& git -C $coreFull rev-parse HEAD 2>$null)
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($head)) {
+    throw 'Could not determine tgwsproxy-core HEAD after build.'
+}
+$head = $head.Trim()
+
+$stamp = Join-Path $coreFull 'core/build/outputs/aar/core-release.commit'
+Set-Content -Path $stamp -Value $head -NoNewline -Encoding ascii
+
 Write-Host "Core AAR: $artifact"
+Write-Host "Core AAR commit: $head"

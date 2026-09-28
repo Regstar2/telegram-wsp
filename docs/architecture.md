@@ -20,9 +20,9 @@ tgwsproxy-core
 libtgwsproxy.so
         |
         +-- cf_proxy_ws
-        +-- direct_ws
+        +-- awg_warp
         +-- cf_worker_ws
-        +-- tcp_fallback
+        +-- direct_ws
 ```
 
 ## 1. Upstream Telegram
@@ -126,7 +126,7 @@ build + smoke
 - успешное применение patch/overlay без fuzzy/manual resolution;
 - сборку Telegram на pinned upstream.
 
-Ориентир — не более 1–5 собственных upstream-файлов.
+Текущий budget — не более 8 source-level upstream-путей.
 
 ## 9. Лицензии
 
@@ -147,9 +147,14 @@ build + smoke
 
 ## 10. Реализованный Prototype overlay
 
-Текущий integration layer использует pinned `tgwsproxy-core` и изменяет только:
+Текущий integration layer использует pinned `tgwsproxy-core` и формирует 8 source-level изменений:
 
 ```text
+TMessagesProj/build.gradle
+TMessagesProj/src/main/java/org/telegram/messenger/BuildVars.java
+TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java
+TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java
+TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java
 TMessagesProj_AppStandalone/build.gradle
 TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/ApplicationLoaderImpl.java
 TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java
@@ -158,13 +163,18 @@ TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootst
 AAR собирается из `config/core.json` и копируется только в локальную
 `.work/telegram/.tgwsproxy/`. Generated binary не входит в source diff.
 
-`TgWsProxyBootstrap`:
+`TgWsProxyBootstrap` остаётся startup/update hook, а runtime lifecycle и пользовательская конфигурация вынесены в `TgWsProxyController`.
+
+Controller:
 
 1. генерирует и сохраняет локальный 16-byte MTProto secret;
-2. запускает `TgWsProxyCore` на `127.0.0.1:1443`;
-3. сохраняет штатные Telegram proxy preferences;
-4. вызывает `ConnectionsManager.setProxySettings(...)`;
-5. при ошибке core отключает только ранее управляемый localhost proxy.
+2. формирует route policy и запускает `TgWsProxyCore` на `127.0.0.1:1443`;
+3. управляет Cloudflare domains, WARP/AmneziaWG profile и Worker pools;
+4. сохраняет штатные Telegram proxy preferences;
+5. вызывает `ConnectionsManager.setProxySettings(...)`;
+6. при ошибке core отключает только ранее управляемый localhost proxy.
+
+`TgWsProxySettingsActivity` — Telegram-style UI, который общается только с controller и не обращается к native/JNA напрямую.
 
 Overlay применяется `scripts/apply-integration.ps1` через точные anchor-замены.
 Если upstream изменит anchor, процесс завершается ошибкой вместо fuzzy merge.

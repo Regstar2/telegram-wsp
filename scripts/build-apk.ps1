@@ -10,22 +10,22 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
+$telegram = [System.IO.Path]::GetFullPath((Join-Path $root $TelegramPath))
+$variant = if ($Full) { 'standalone' } else { 'prototype' }
+$apk = Join-Path $telegram "TMessagesProj_AppStandalone/build/outputs/apk/afat/$variant/app.apk"
+
+# Remove any previously built APK before preparation starts. If preparation or
+# the build fails, there must be no stale artifact left that can be installed
+# and mistaken for the current source revision.
+Remove-Item -Force $apk -ErrorAction SilentlyContinue
 
 if (-not $SkipPrepare) {
     & (Join-Path $PSScriptRoot 'prepare-integration.ps1')
 }
 
-$telegram = [System.IO.Path]::GetFullPath((Join-Path $root $TelegramPath))
-
 if (-not (Test-Path (Join-Path $telegram '.git'))) {
     throw "Telegram checkout not found: $telegram"
 }
-
-$variant = if ($Full) { 'standalone' } else { 'prototype' }
-$apk = Join-Path $telegram "TMessagesProj_AppStandalone/build/outputs/apk/afat/$variant/app.apk"
-
-# A failed build must never leave a stale APK that can be installed by mistake.
-Remove-Item -Force $apk -ErrorAction SilentlyContinue
 
 & (Join-Path $PSScriptRoot 'ensure-telegram-theme-assets-lf.ps1') -TelegramPath $telegram
 
@@ -51,8 +51,19 @@ if ($buildVars -notmatch 'public static boolean SUPPORTS_PASSKEYS = false;') {
 
 $bootstrapPath = Join-Path $telegram 'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java'
 $bootstrap = Get-Content $bootstrapPath -Raw
-if ($bootstrap -notmatch '@connection_mode=cf_first') {
-    throw 'Embedded TgWsProxy runtime is not configured for cf_first.'
+if ($bootstrap -notmatch 'TgWsProxyController\.start\(appContext\)') {
+    throw 'Embedded TgWsProxy bootstrap does not delegate runtime startup to TgWsProxyController.'
+}
+
+$controllerPath = Join-Path $telegram 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
+if (-not (Test-Path $controllerPath)) {
+    throw "Prepared TgWsProxy controller not found: $controllerPath"
+}
+$controller = Get-Content $controllerPath -Raw
+if ($controller -notmatch '@route_order=' -or
+    $controller -notmatch '(?s)direct_ws.*cf_proxy_ws.*awg_warp.*cf_worker_ws' -or
+    $controller -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws') {
+    throw 'Prepared TgWsProxy controller does not contain the required Wi-Fi/mobile route policies.'
 }
 
 $gradle = Get-Command gradle -ErrorAction SilentlyContinue

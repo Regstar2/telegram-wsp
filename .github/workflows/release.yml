@@ -66,7 +66,7 @@ jobs:
           cache: false
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install Android SDK components
         shell: pwsh
@@ -171,6 +171,16 @@ jobs:
           - Android package: org.telegram.messenger.web
           - APK SHA-256: $apkSha
           - Release revision: $($env:RELEASE_REVISION)
+
+          ## Telegram-WSP changes
+
+          - Added the built-in proxy control screen in Telegram proxy settings.
+          - Added Auto / Cloudflare Proxy / WARP-AmneziaWG / Cloudflare Worker / Direct routing.
+          - Auto routing: CF Proxy → AWG → Worker → Direct on Wi-Fi; CF Proxy → AWG → Worker on mobile.
+          - Added Cloudflare domain update/check controls.
+          - Added WARP/AmneziaWG profile creation, import, export and deletion.
+          - Added independent Proxy Worker and Amnezia provisioning Worker pools.
+          - Added translations for all built-in locales of the pinned Telegram upstream.
 
           The APK is signed with the persistent Telegram-WSP release key. Exact source components used to reproduce this build are attached to the release.
           "@

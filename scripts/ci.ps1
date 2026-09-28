@@ -157,6 +157,17 @@ $syncUpstreamScript = Get-Content (Join-Path $root 'scripts/sync-upstream.ps1') 
 if ($syncUpstreamScript -notmatch 'git ls-remote' -or $syncUpstreamScript -notmatch 'APP_VERSION_NAME' -or $syncUpstreamScript -notmatch 'APP_VERSION_CODE') {
     throw 'Upstream sync script must resolve the Telegram master commit and version metadata.'
 }
+$upstreamWorkflow = Get-Content (Join-Path $root '.github/workflows/upstream-sync.yml') -Raw
+$releaseWorkflow = Get-Content (Join-Path $root '.github/workflows/release.yml') -Raw
+foreach ($workflowText in @($upstreamWorkflow, $releaseWorkflow)) {
+    if ($workflowText -match 'android-actions/setup-android@v3') {
+        throw 'GitHub Actions must not use setup-android@v3 under Node 24.'
+    }
+    if ($workflowText -notmatch 'android-actions/setup-android@v4') {
+        throw 'GitHub Actions must use setup-android@v4.'
+    }
+}
+
 if ($syncUpstreamScript -notmatch 'master-ahead-without-version-bump') {
     throw 'Upstream sync must avoid publishing arbitrary master commits without a Telegram version bump.'
 }
@@ -510,8 +521,79 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     }
 
     $preparedBootstrap = Get-Content (Join-Path $telegramWorktree 'TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/TgWsProxyBootstrap.java') -Raw
-    if ($preparedBootstrap -notmatch '@connection_mode=cf_first') {
-        throw 'Prepared Telegram bootstrap must prefer the Cloudflare proxy route.'
+    if ($preparedBootstrap -notmatch 'TgWsProxyController\.start\(appContext\)') {
+        throw 'Prepared Telegram bootstrap must delegate proxy runtime startup to TgWsProxyController.'
+    }
+
+    $preparedControllerPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
+    $preparedSettingsPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java'
+    $preparedProxyListPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java'
+    foreach ($uiPath in @($preparedControllerPath, $preparedSettingsPath, $preparedProxyListPath)) {
+        if (-not (Test-Path $uiPath)) {
+            throw "Prepared TgWsProxy UI file is missing: $uiPath"
+        }
+    }
+
+    $preparedController = Get-Content $preparedControllerPath -Raw
+    if ($preparedController -notmatch '@route_order=' -or
+        $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws.*direct_ws' -or
+        $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws') {
+        throw 'Prepared TgWsProxy controller does not contain the required Wi-Fi/mobile ordered route policies.'
+    }
+    if ($preparedController -match 'NativeBridge' -or $preparedController -match 'com\.sun\.jna') {
+        throw 'Telegram UI adapter must not access JNA/native bridge directly.'
+    }
+
+    $preparedSettings = Get-Content $preparedSettingsPath -Raw
+    if ($preparedSettings -notmatch 'Создать' -or
+        $preparedSettings -notmatch 'Импорт \.conf' -or
+        $preparedSettings -notmatch 'Экспорт \.conf' -or
+        $preparedSettings -notmatch 'Удалить' -or
+        $preparedSettings -notmatch 'Для прокси' -or
+        $preparedSettings -notmatch 'Для Amnezia') {
+        throw 'Prepared TgWsProxy settings screen is missing the accepted compact UI controls.'
+    }
+    if ($preparedController -notmatch 'deleteAwgProfileAsync' -or
+        $preparedController -notmatch 'exportAwgProfileAsync' -or
+        $preparedSettings -notmatch 'Экспорт \.conf') {
+        throw 'Prepared TgWsProxy settings screen is missing the final WARP polish.'
+    }
+    if ($preparedSettings -match 'Активный backend' -or
+        $preparedSettings -match 'Готово к обновлению и проверке') {
+        throw 'Prepared TgWsProxy settings screen still contains removed idle-status text.'
+    }
+    if ($preparedSettings -notmatch 'AWG и Worker используются только когда настроены и доступны\.' -or
+        $preparedSettings -notmatch 'key_windowBackgroundWhiteGrayText2') {
+        throw 'Prepared TgWsProxy settings screen is missing restored route notes or dark-gray editor hints.'
+    }
+    if ($preparedSettings -match 'TextInfoPrivacyCell') {
+        throw 'Prepared TgWsProxy settings screen must not use muted privacy cells for proxy controls/status.'
+    }
+    foreach ($localeHelper in @('trEn', 'trRu', 'trUk', 'trDe', 'trEs', 'trIt', 'trNl', 'trPtBr', 'trAr', 'trKo')) {
+        if ($preparedSettings -notmatch [regex]::Escape($localeHelper + '(')) {
+            throw "Prepared TgWsProxy settings screen is missing built-in locale helper: $localeHelper"
+        }
+    }
+    if ($preparedController -notmatch 'probeCfDomain' -or
+        $preparedController -notmatch '"kws2\." \+ host' -or
+        $preparedController -notmatch 'InetAddress\.getAllByName') {
+        throw 'CF-domain validation must probe the real kws2.<base-domain> route hostname.'
+    }
+
+    $preparedProxyList = Get-Content $preparedProxyListPath -Raw
+    if ($preparedProxyList -notmatch 'new TgWsProxySettingsActivity\(\)') {
+        throw 'Telegram ProxyListActivity does not expose the embedded proxy settings entry.'
+    }
+    if ($preparedProxyList -notmatch 'tgWsProxyRow = rowCount\+\+;' -or
+        $preparedProxyList -notmatch 'position == tgWsProxyRow \|\| position == proxyAddRow \|\| position == deleteAllRow') {
+        throw 'Telegram ProxyListActivity does not render the embedded proxy row as a visible text setting.'
+    }
+    if ($preparedProxyList -notmatch 'TGWSP_SETTINGS_ROW') {
+        throw 'Telegram ProxyListActivity does not bind the embedded proxy row label.'
+    }
+
+    if ($preparedCoreBuild -notmatch 'tgwsproxy-core\.aar') {
+        throw 'Prepared Telegram core module does not depend on the pinned tgwsproxy-core AAR.'
     }
     if ($preparedBootstrap -match 'TelegramWSPTheme' -or $preparedBootstrap -match 'scheduleThemeDiagnostics') {
         throw 'Release bootstrap must not contain temporary theme diagnostics.'
@@ -535,8 +617,8 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
             ForEach-Object { if ($_.Length -ge 4) { $_.Substring(3).Trim('"') } } |
             Where-Object { $_ -and -not $_.StartsWith('.tgwsproxy/') }
     )
-    if ($changes.Count -gt 5) {
-        throw "Prepared integration exceeds the 5-file source diff budget: $($changes.Count)"
+    if ($changes.Count -gt 8) {
+        throw "Prepared integration exceeds the 8-file source diff budget: $($changes.Count)"
     }
 }
 
