@@ -162,7 +162,7 @@ public final class TgWsProxyController {
         String runtimeState = enabled ? "Запускается" : "Выключен";
         String actualBackend = "";
         String lastError = "";
-        if (status != null) {
+        if (enabled && status != null) {
             runtimeState = runtimeStateLabel(status.getState().name());
             actualBackend = backendLabel(status.getActualBackend());
             lastError = safeStatusText(status.getLastError());
@@ -336,6 +336,36 @@ public final class TgWsProxyController {
                 complete(callback, true, "ok");
             } catch (Throwable error) {
                 complete(callback, false, "import_failed");
+            }
+        });
+    }
+
+    public static void deleteAwgProfileAsync(Context context, Callback callback) {
+        Context appContext = context.getApplicationContext();
+        runAsync("TgWsProxyAwgDelete", () -> {
+            try {
+                File config = selectedAwgConfigFile(appContext);
+                if (config.exists() && !config.delete()) {
+                    complete(callback, false, "profile_delete_failed");
+                    return;
+                }
+
+                prefs(appContext).edit()
+                        .remove(KEY_AWG_PROFILE_NAME)
+                        .remove(KEY_AWG_PROFILE_READY)
+                        .remove(KEY_AWG_PROFILE_HEALTH)
+                        .remove(KEY_AWG_PROFILE_LAST_CHECK)
+                        .apply();
+
+                try {
+                    TgWsProxyCore.INSTANCE.resetAwgWarp();
+                } catch (Throwable ignore) {
+                }
+
+                restartManagedIfEnabled(appContext);
+                complete(callback, true, "ok");
+            } catch (Throwable error) {
+                complete(callback, false, "profile_delete_failed");
             }
         });
     }
