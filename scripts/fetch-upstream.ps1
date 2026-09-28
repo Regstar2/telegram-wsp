@@ -99,7 +99,12 @@ if ($submodulePaths.Count -eq 0) {
 
 foreach ($submodule in $submodulePaths) {
     Write-Host "Initializing Telegram submodule: $submodule"
-    & git -C $destinationPath submodule update --init --depth 1 -- $submodule
+
+    # Telegram's media submodule contains test-data paths that exceed the legacy
+    # Windows MAX_PATH limit. Pass core.longpaths to the submodule command so
+    # the setting is inherited by its clone/checkout subprocesses without
+    # changing the developer's global Git configuration.
+    & git -C $destinationPath -c core.longpaths=true submodule update --init --depth 1 -- $submodule
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to initialize Telegram submodule: $submodule"
     }
