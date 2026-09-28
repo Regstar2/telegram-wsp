@@ -72,28 +72,13 @@ $buildPath = Join-Path $telegram 'TMessagesProj_AppStandalone/build.gradle'
 $build = Get-Content $buildPath -Raw
 
 $appStandaloneMarker = @'
-        standalone {
-            matchingFallbacks = ['release']
-            debuggable false
-            jniDebuggable false
-            signingConfig signingConfigs.release
-            applicationIdSuffix ".web"
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
             ndk.debugSymbolLevel = 'FULL'
         }
+    }
+
+    sourceSets.debug {
 '@.TrimEnd()
 $appPrototypeBlock = @'
-        standalone {
-            matchingFallbacks = ['release']
-            debuggable false
-            jniDebuggable false
-            signingConfig signingConfigs.release
-            applicationIdSuffix ".web"
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
             ndk.debugSymbolLevel = 'FULL'
         }
         prototype {
@@ -106,8 +91,11 @@ $appPrototypeBlock = @'
             multiDexEnabled true
             ndk.debugSymbolLevel = 'FULL'
         }
+    }
+
+    sourceSets.debug {
 '@.TrimEnd()
-if ($build -notmatch '(?m)^        prototype \{') {
+if ($build -notmatch '(?m)^        prototype \\{') {
     $count = ([regex]::Matches($build, [regex]::Escape($appStandaloneMarker))).Count
     if ($count -ne 1) { throw "Telegram app standalone build-type anchor count is $count; expected 1." }
     $build = $build.Replace($appStandaloneMarker, $appPrototypeBlock)
