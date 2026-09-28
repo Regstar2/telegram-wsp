@@ -779,7 +779,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "Built-in proxy is disabled";
             case "Автоматически": return "Automatic";
             case "не выбран": return "not selected";
-            case "Активный backend": return "Active backend";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Runtime error";
             case "Режим маршрута": return "Route mode";
@@ -791,7 +790,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Domain check started";
             case "Проверка завершена": return "Check completed";
             case "Ошибка проверки": return "Check failed";
-            case "Готово к обновлению и проверке": return "Ready to update and check";
             case "Профиль": return "Profile";
             case "Создать": return "Create";
             case "Импорт .conf": return "Import .conf";
@@ -857,7 +855,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "Вбудований проксі вимкнено";
             case "Автоматически": return "Автоматично";
             case "не выбран": return "не вибрано";
-            case "Активный backend": return "Активний backend";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Помилка runtime";
             case "Режим маршрута": return "Режим маршруту";
@@ -871,7 +868,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Перевірку доменів запущено";
             case "Проверка завершена": return "Перевірку завершено";
             case "Ошибка проверки": return "Помилка перевірки";
-            case "Готово к обновлению и проверке": return "Готово до оновлення та перевірки";
             case "Профиль": return "Профіль";
             case "Создать": return "Створити";
             case "Импорт .conf": return "Імпорт .conf";
@@ -938,7 +934,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "Integrierter Proxy ist deaktiviert";
             case "Автоматически": return "Automatisch";
             case "не выбран": return "nicht ausgewählt";
-            case "Активный backend": return "Aktives Backend";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Laufzeitfehler";
             case "Режим маршрута": return "Routing-Modus";
@@ -952,7 +947,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Domain-Prüfung gestartet";
             case "Проверка завершена": return "Prüfung abgeschlossen";
             case "Ошибка проверки": return "Prüfung fehlgeschlagen";
-            case "Готово к обновлению и проверке": return "Bereit zum Aktualisieren und Prüfen";
             case "Профиль": return "Profil";
             case "Создать": return "Erstellen";
             case "Импорт .conf": return "Import .conf";
@@ -1019,7 +1013,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "El proxy integrado está desactivado";
             case "Автоматически": return "Automático";
             case "не выбран": return "sin seleccionar";
-            case "Активный backend": return "Backend activo";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Error de ejecución";
             case "Режим маршрута": return "Modo de ruta";
@@ -1033,7 +1026,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Comprobación de dominios iniciada";
             case "Проверка завершена": return "Comprobación completada";
             case "Ошибка проверки": return "Error de comprobación";
-            case "Готово к обновлению и проверке": return "Listo para actualizar y comprobar";
             case "Профиль": return "Perfil";
             case "Создать": return "Crear";
             case "Импорт .conf": return "Importar .conf";
@@ -1100,7 +1092,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "Il proxy integrato è disattivato";
             case "Автоматически": return "Automatico";
             case "не выбран": return "non selezionato";
-            case "Активный backend": return "Backend attivo";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Errore runtime";
             case "Режим маршрута": return "Modalità percorso";
@@ -1114,7 +1105,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Verifica domini avviata";
             case "Проверка завершена": return "Verifica completata";
             case "Ошибка проверки": return "Errore di verifica";
-            case "Готово к обновлению и проверке": return "Pronto per aggiornare e verificare";
             case "Профиль": return "Profilo";
             case "Создать": return "Crea";
             case "Импорт .conf": return "Importa .conf";
@@ -1181,7 +1171,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "Ingebouwde proxy is uitgeschakeld";
             case "Автоматически": return "Automatisch";
             case "не выбран": return "niet geselecteerd";
-            case "Активный backend": return "Actieve backend";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Runtimefout";
             case "Режим маршрута": return "Routeringsmodus";
@@ -1195,7 +1184,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Domeincontrole gestart";
             case "Проверка завершена": return "Controle voltooid";
             case "Ошибка проверки": return "Controle mislukt";
-            case "Готово к обновлению и проверке": return "Klaar om bij te werken en te controleren";
             case "Профиль": return "Profiel";
             case "Создать": return "Maken";
             case "Импорт .conf": return "Importeer .conf";
@@ -1262,7 +1250,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "O proxy integrado está desativado";
             case "Автоматически": return "Automático";
             case "не выбран": return "não selecionado";
-            case "Активный backend": return "Backend ativo";
             case "Backend": return "Backend";
             case "Ошибка runtime": return "Erro de execução";
             case "Режим маршрута": return "Modo de rota";
@@ -1276,7 +1263,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "Verificação de domínios iniciada";
             case "Проверка завершена": return "Verificação concluída";
             case "Ошибка проверки": return "Falha na verificação";
-            case "Готово к обновлению и проверке": return "Pronto para atualizar e verificar";
             case "Профиль": return "Perfil";
             case "Создать": return "Criar";
             case "Импорт .conf": return "Importar .conf";
@@ -1343,7 +1329,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "الوكيل المدمج معطل";
             case "Автоматически": return "تلقائي";
             case "не выбран": return "غير محدد";
-            case "Активный backend": return "الخلفية النشطة";
             case "Backend": return "الخلفية";
             case "Ошибка runtime": return "خطأ وقت التشغيل";
             case "Режим маршрута": return "وضع المسار";
@@ -1357,7 +1342,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "بدأ فحص النطاقات";
             case "Проверка завершена": return "اكتمل الفحص";
             case "Ошибка проверки": return "فشل الفحص";
-            case "Готово к обновлению и проверке": return "جاهز للتحديث والفحص";
             case "Профиль": return "الملف";
             case "Создать": return "إنشاء";
             case "Импорт .conf": return "استيراد .conf";
@@ -1424,7 +1408,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Встроенный прокси выключен": return "내장 프록시가 꺼져 있습니다";
             case "Автоматически": return "자동";
             case "не выбран": return "선택되지 않음";
-            case "Активный backend": return "활성 백엔드";
             case "Backend": return "백엔드";
             case "Ошибка runtime": return "런타임 오류";
             case "Режим маршрута": return "라우팅 모드";
@@ -1438,7 +1421,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "Проверка доменов запущена": return "도메인 확인 시작됨";
             case "Проверка завершена": return "확인 완료";
             case "Ошибка проверки": return "확인 실패";
-            case "Готово к обновлению и проверке": return "업데이트 및 확인 준비됨";
             case "Профиль": return "프로필";
             case "Создать": return "생성";
             case "Импорт .conf": return ".conf 가져오기";
