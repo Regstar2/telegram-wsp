@@ -547,6 +547,15 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     }
 
     $preparedController = Get-Content $preparedControllerPath -Raw
+    if ($preparedController -notmatch 'org\.telegram\.utils\.proxy\.ProxySettings' -or
+        $preparedController -notmatch 'ProxySettings\.builder\(\)' -or
+        $preparedController -notmatch 'setType\(ProxySettings\.Type\.MTPROTO\)' -or
+        $preparedController -notmatch 'ConnectionsManager\.setProxySettings\(enabled, settings\)') {
+        throw 'Prepared TgWsProxy controller must use Telegram ProxySettings API for the managed MTProto proxy.'
+    }
+    if ($preparedController -match 'ConnectionsManager\.setProxySettings\(enabled, HOST, PORT') {
+        throw 'Prepared TgWsProxy controller still uses the removed legacy setProxySettings signature.'
+    }
     if ($preparedController -notmatch '@route_order=' -or
         $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws.*direct_ws' -or
         $preparedController -notmatch '(?s)cf_proxy_ws.*awg_warp.*cf_worker_ws') {

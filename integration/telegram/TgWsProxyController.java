@@ -12,6 +12,7 @@ import android.os.Looper;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.utils.proxy.ProxySettings;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -1289,8 +1290,13 @@ public final class TgWsProxyController {
     }
 
     private static void applyTelegramProxy(boolean enabled, String secret) {
-        Runnable apply = () ->
-                ConnectionsManager.setProxySettings(enabled, HOST, PORT, "", "", secret);
+        ProxySettings settings = ProxySettings.builder()
+                .setType(ProxySettings.Type.MTPROTO)
+                .setAddress(HOST)
+                .setPort(PORT)
+                .setSecret(secret)
+                .build();
+        Runnable apply = () -> ConnectionsManager.setProxySettings(enabled, settings);
         Handler handler = ApplicationLoader.applicationHandler;
         if (handler != null) {
             handler.post(apply);
