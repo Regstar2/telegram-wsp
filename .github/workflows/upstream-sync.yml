@@ -82,7 +82,7 @@ jobs:
 
       - name: Set up Android SDK
         if: steps.upstream.outputs.changed == 'true'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install validation SDK components
         if: steps.upstream.outputs.changed == 'true'
