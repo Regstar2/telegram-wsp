@@ -109,7 +109,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         ));
 
         addShadow(context, content);
-        addHeader(context, content, "МАРШРУТИЗАЦИЯ");
+        addHeader(context, content, tr(context, "МАРШРУТИЗАЦИЯ"));
 
         routeCell = settingsCell(context);
         routeCell.setOnClickListener(v -> showRouteDialog(context));
@@ -117,11 +117,13 @@ public class TgWsProxySettingsActivity extends BaseFragment {
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
-        TextCheckCell wifi = valueCell(context, "Wi-Fi", "CF Proxy → AWG* → Worker* → Direct", true);
+        TextView wifi = normalInfoText(context);
+        wifi.setText("Wi-Fi: CF Proxy → AWG* → Worker* → Direct");
         content.addView(wifi, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
-        TextCheckCell mobile = valueCell(context, "Мобильная сеть", "CF Proxy → AWG* → Worker*", false);
+        TextView mobile = normalInfoText(context);
+        mobile.setText(tr(context, "Мобильная сеть") + ": CF Proxy → AWG* → Worker*");
         content.addView(mobile, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
@@ -215,7 +217,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         ));
 
         addShadow(context, content);
-        addHeader(context, content, "СВОИ WORKER");
+        addHeader(context, content, tr(context, "СВОИ WORKER"));
 
         workerSummaryCell = normalInfoText(context);
         content.addView(workerSummaryCell, LayoutHelper.createLinear(
@@ -329,11 +331,9 @@ public class TgWsProxySettingsActivity extends BaseFragment {
     private void refreshUi(Context context) {
         TgWsProxyController.UiState state = TgWsProxyController.getUiState(context);
         if (enabledCell != null) {
-            enabledCell.setTextAndValueAndCheck(
+            enabledCell.setTextAndCheck(
                     tr(context, "Использовать встроенный прокси"),
-                    tr(context, "Локальный MTProto-прокси для Telegram"),
                     state.enabled,
-                    false,
                     true
             );
         }
@@ -619,18 +619,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         TextSettingsCell cell = settingsCell(context);
         cell.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
         cell.setText(text, false);
-        return cell;
-    }
-
-    private static TextCheckCell valueCell(
-            Context context,
-            String title,
-            String value,
-            boolean divider
-    ) {
-        TextCheckCell cell = new TextCheckCell(context);
-        cell.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-        cell.setTextAndValue(title, value, false, divider);
         return cell;
     }
 
