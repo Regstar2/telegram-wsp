@@ -253,36 +253,12 @@ if ($coreBuild -notmatch 'TGWS_PROXY_ARM64_ONLY') {
 }
 
 $coreStandaloneMarker = @'
-        standalone {
-            matchingFallbacks = ['release']
-            jniDebuggable false
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
-            ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
-            buildConfigField "String", "APP_CENTER_HASH", "\"\""
-            buildConfigField "String", "BETA_URL", "\"\""
-            buildConfigField "boolean", "DEBUG_VERSION", "false"
-            buildConfigField "boolean", "DEBUG_PRIVATE_VERSION", "false"
-            buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
+
+        release {
 '@.TrimEnd()
 $corePrototypeBlock = @'
-        standalone {
-            matchingFallbacks = ['release']
-            jniDebuggable false
-            minifyEnabled true
-            multiDexEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), '../TMessagesProj/proguard-rules.pro'
-            ndk.debugSymbolLevel = 'FULL'
-            buildConfigField "String", "BUILD_VERSION_STRING", "\"" + APP_VERSION_NAME + "\""
-            buildConfigField "String", "APP_CENTER_HASH", "\"\""
-            buildConfigField "String", "BETA_URL", "\"\""
-            buildConfigField "boolean", "DEBUG_VERSION", "false"
-            buildConfigField "boolean", "DEBUG_PRIVATE_VERSION", "false"
-            buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
 
@@ -300,6 +276,8 @@ $corePrototypeBlock = @'
             buildConfigField "boolean", "BUNDLE", "false"
             buildConfigField "int", "VERSION_NUM", "6"
         }
+
+        release {
 '@.TrimEnd()
 if ($coreBuild -notmatch '(?m)^        prototype \{') {
     $count = ([regex]::Matches($coreBuild, [regex]::Escape($coreStandaloneMarker))).Count
