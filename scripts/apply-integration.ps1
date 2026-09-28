@@ -95,7 +95,7 @@ $appPrototypeBlock = @'
 
     sourceSets.debug {
 '@.TrimEnd()
-if ($build -notmatch '(?m)^        prototype \\{') {
+if ($build -notmatch '(?m)^        prototype \{') {
     $count = ([regex]::Matches($build, [regex]::Escape($appStandaloneMarker))).Count
     if ($count -ne 1) { throw "Telegram app standalone build-type anchor count is $count; expected 1." }
     $build = $build.Replace($appStandaloneMarker, $appPrototypeBlock)
