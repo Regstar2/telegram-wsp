@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.text.InputType;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -583,6 +584,8 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         TextView view = new TextView(context);
         view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         view.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        view.setSingleLine(true);
+        view.setEllipsize(TextUtils.TruncateAt.END);
         view.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
         view.setPadding(
                 AndroidUtilities.dp(17), AndroidUtilities.dp(12),
