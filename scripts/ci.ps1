@@ -543,10 +543,16 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     }
     if ($preparedController -notmatch 'deleteAwgProfileAsync' -or
         $preparedController -notmatch 'exportAwgProfileAsync' -or
-        $preparedSettings -notmatch 'Встроенный прокси выключен' -or
-        $preparedSettings -notmatch 'Активный backend' -or
         $preparedSettings -notmatch 'Экспорт \.conf') {
-        throw 'Prepared TgWsProxy settings screen is missing the final runtime/WARP polish.'
+        throw 'Prepared TgWsProxy settings screen is missing the final WARP polish.'
+    }
+    if ($preparedSettings -match 'Активный backend' -or
+        $preparedSettings -match 'Готово к обновлению и проверке') {
+        throw 'Prepared TgWsProxy settings screen still contains removed idle-status text.'
+    }
+    if ($preparedSettings -notmatch 'AWG и Worker используются только когда настроены и доступны\.' -or
+        $preparedSettings -notmatch 'key_windowBackgroundWhiteGrayText2') {
+        throw 'Prepared TgWsProxy settings screen is missing restored route notes or dark-gray editor hints.'
     }
     if ($preparedSettings -match 'TextInfoPrivacyCell') {
         throw 'Prepared TgWsProxy settings screen must not use muted privacy cells for proxy controls/status.'
@@ -557,8 +563,9 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
         }
     }
     if ($preparedController -notmatch 'probeCfDomain' -or
+        $preparedController -notmatch '"kws2\." \+ host' -or
         $preparedController -notmatch 'InetAddress\.getAllByName') {
-        throw 'CF-domain validation must avoid raw HTTPS-root false negatives.'
+        throw 'CF-domain validation must probe the real kws2.<base-domain> route hostname.'
     }
 
     $preparedProxyList = Get-Content $preparedProxyListPath -Raw
