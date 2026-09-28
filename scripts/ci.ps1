@@ -542,9 +542,23 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
         throw 'Prepared TgWsProxy settings screen is missing the accepted compact UI controls.'
     }
     if ($preparedController -notmatch 'deleteAwgProfileAsync' -or
+        $preparedController -notmatch 'exportAwgProfileAsync' -or
         $preparedSettings -notmatch 'Встроенный прокси выключен' -or
-        $preparedSettings -notmatch 'Активный backend:') {
+        $preparedSettings -notmatch 'Активный backend' -or
+        $preparedSettings -notmatch 'Экспорт \.conf') {
         throw 'Prepared TgWsProxy settings screen is missing the final runtime/WARP polish.'
+    }
+    if ($preparedSettings -match 'TextInfoPrivacyCell') {
+        throw 'Prepared TgWsProxy settings screen must not use muted privacy cells for proxy controls/status.'
+    }
+    foreach ($localeHelper in @('trEn', 'trRu', 'trUk', 'trDe', 'trEs', 'trIt', 'trNl', 'trPtBr', 'trAr', 'trKo')) {
+        if ($preparedSettings -notmatch [regex]::Escape($localeHelper + '(')) {
+            throw "Prepared TgWsProxy settings screen is missing built-in locale helper: $localeHelper"
+        }
+    }
+    if ($preparedController -notmatch 'probeCfDomain' -or
+        $preparedController -notmatch 'InetAddress\.getAllByName') {
+        throw 'CF-domain validation must avoid raw HTTPS-root false negatives.'
     }
 
     $preparedProxyList = Get-Content $preparedProxyListPath -Raw
