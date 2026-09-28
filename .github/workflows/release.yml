@@ -87,10 +87,8 @@ jobs:
           }
           "TGWSP_CORE_GRADLE=$gradleHome\bin\gradle.bat" >> $env:GITHUB_ENV
 
-      - name: Set up Gradle 8.11.1 for Telegram
+      - name: Set up Gradle cache for Telegram wrapper
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
 
       - name: Validate release secrets
         shell: pwsh
