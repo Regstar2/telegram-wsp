@@ -39,7 +39,7 @@ Telegram-WSP использует собственные название, packa
 
 | Компонент | Текущее состояние |
 |---|---|
-| Telegram upstream | 12.10.1, build 7038 |
+| Telegram upstream | 12.10.5, build 7105 |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
 | Подписанный APK | Публикуется через GitHub Releases |
