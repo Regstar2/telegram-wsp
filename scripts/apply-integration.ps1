@@ -411,8 +411,8 @@ if (-not $proxyList.Contains('// TGWSP_SETTINGS_ROW')) {
     $proxyList = $proxyList.Replace($proxyBindMarker, $proxyBindBlock)
 }
 
-$proxyEnabledMarker = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
-$proxyEnabledBlock = 'return position == useProxyRow || position == rotationRow || position == callsRow || position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow;'
+$proxyEnabledMarker = 'position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow'
+$proxyEnabledBlock = 'position == tgWsProxyRow || position == proxyAddRow || position == deleteAllRow || position >= proxyStartRow && position < proxyEndRow'
 if (-not $proxyList.Contains('position == tgWsProxyRow || position == proxyAddRow')) {
     $count = ([regex]::Matches($proxyList, [regex]::Escape($proxyEnabledMarker))).Count
     if ($count -ne 1) { throw "ProxyList enabled anchor count is $count; expected 1." }
