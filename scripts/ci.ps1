@@ -249,6 +249,9 @@ $fetchUpstreamScript = Get-Content (Join-Path $root 'scripts/fetch-upstream.ps1'
 if ($fetchUpstreamScript -notmatch "config -f \.gitmodules --get-regexp" -or $fetchUpstreamScript -notmatch 'submodule update --init --depth 1') {
     throw 'Telegram upstream fetch must initialize all pinned submodules declared by Telegram.'
 }
+if ($fetchUpstreamScript -notmatch '-c core\.longpaths=true submodule update') {
+    throw 'Telegram upstream fetch must enable Git long-path support for Windows submodule checkout.'
+}
 foreach ($requiredNativeInput in @(
     'jlatexmath/jlatexmath/build.gradle',
     'third_party/libyuv/CMakeLists.txt',
