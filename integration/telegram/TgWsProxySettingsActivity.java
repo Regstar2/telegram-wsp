@@ -41,7 +41,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
     private TextSettingsCell statusCell;
     private TextSettingsCell routeCell;
     private TextSettingsCell cfSummaryCell;
-    private TextView runtimeInfoCell;
     private TextView cfOperationCell;
     private TextView awgProfileInfoCell;
     private TextView awgOperationCell;
@@ -104,11 +103,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
-        runtimeInfoCell = normalInfoText(context);
-        content.addView(runtimeInfoCell, LayoutHelper.createLinear(
-                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
-        ));
-
         addShadow(context, content);
         addHeader(context, content, tr(context, "МАРШРУТИЗАЦИЯ"));
 
@@ -127,6 +121,18 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         mobile.setText(tr(context, "Мобильная сеть") + ": CF Proxy → AWG* → Worker*");
         content.addView(mobile, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        TextView routeFootnote = secondaryInfoText(context);
+        routeFootnote.setText(tr(context, "AWG и Worker используются только когда настроены и доступны."));
+        content.addView(routeFootnote, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        View routeGap = new View(context);
+        routeGap.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+        content.addView(routeGap, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, 8
         ));
 
         addHeader(context, content, "CLOUDFLARE PROXY");
@@ -148,6 +154,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
                 return;
             }
             updateDomains.setEnabled(false);
+            cfOperationCell.setVisibility(View.VISIBLE);
             cfOperationCell.setText(tr(context, "Обновление списка и проверка доменов…"));
             toast(context, tr(context, "Проверка доменов запущена"));
             TgWsProxyController.updateAndCheckCfDomainsAsync(context, (success, message) -> {
@@ -164,7 +171,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         ));
 
         cfOperationCell = normalInfoText(context);
-        cfOperationCell.setText(tr(context, "Готово к обновлению и проверке"));
+        cfOperationCell.setVisibility(View.GONE);
         content.addView(cfOperationCell, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
@@ -340,21 +347,6 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         }
         if (statusCell != null) {
             statusCell.setTextAndValue(tr(context, "Состояние"), localizeDynamic(context, state.status), true);
-        }
-        if (runtimeInfoCell != null) {
-            if (!state.enabled) {
-                runtimeInfoCell.setText(tr(context, "Встроенный прокси выключен"));
-            } else {
-                String backend = state.actualBackend;
-                if (backend.isEmpty()) {
-                    backend = TgWsProxyController.ROUTE_AUTO.equals(state.routeMode)
-                            ? tr(context, "Автоматически")
-                            : tr(context, "не выбран");
-                }
-                runtimeInfoCell.setText(state.lastError.isEmpty()
-                        ? tr(context, "Активный backend") + ": " + backend
-                        : tr(context, "Backend") + ": " + backend + "\n" + tr(context, "Ошибка runtime") + ": " + state.lastError);
-            }
         }
         if (routeCell != null) {
             routeCell.setTextAndValue(
@@ -630,7 +622,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         edit.setGravity(Gravity.TOP | (LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT));
         edit.setTextSize(15);
         edit.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        edit.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        edit.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
         edit.setHint(hint);
         edit.setMinLines(2);
         edit.setMaxLines(4);
@@ -673,6 +665,17 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         view.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
         view.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
         view.setPadding(AndroidUtilities.dp(17), AndroidUtilities.dp(10),
+                AndroidUtilities.dp(17), AndroidUtilities.dp(10));
+        view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        return view;
+    }
+
+    private static TextView secondaryInfoText(Context context) {
+        TextView view = new TextView(context);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        view.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        view.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        view.setPadding(AndroidUtilities.dp(17), AndroidUtilities.dp(6),
                 AndroidUtilities.dp(17), AndroidUtilities.dp(10));
         view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
         return view;
@@ -767,6 +770,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         switch (key) {
             case "МАРШРУТИЗАЦИЯ": return "ROUTING";
             case "Мобильная сеть": return "Mobile network";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG and Worker are used only when configured and available.";
             case "СВОИ WORKER": return "CUSTOM WORKERS";
             case "Встроенный прокси": return "Built-in proxy";
             case "Использовать встроенный прокси": return "Use built-in proxy";
