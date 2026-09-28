@@ -924,6 +924,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "хв тому";
             case "ч назад": return "год тому";
             case "встроенных": return "вбудованих";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG і Worker використовуються лише коли налаштовані та доступні.";
             default: return trEn(key);
         }
     }
@@ -1004,6 +1005,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "Min. her";
             case "ч назад": return "Std. her";
             case "встроенных": return "integriert";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG und Worker werden nur verwendet, wenn sie konfiguriert und verfügbar sind.";
             default: return trEn(key);
         }
     }
@@ -1084,6 +1086,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "min atrás";
             case "ч назад": return "h atrás";
             case "встроенных": return "integrados";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG y Worker se usan solo cuando están configurados y disponibles.";
             default: return trEn(key);
         }
     }
@@ -1164,6 +1167,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "min fa";
             case "ч назад": return "h fa";
             case "встроенных": return "integrati";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG e Worker vengono usati solo quando sono configurati e disponibili.";
             default: return trEn(key);
         }
     }
@@ -1244,6 +1248,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "min geleden";
             case "ч назад": return "u geleden";
             case "встроенных": return "ingebouwd";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG en Worker worden alleen gebruikt wanneer ze zijn ingesteld en beschikbaar zijn.";
             default: return trEn(key);
         }
     }
@@ -1324,6 +1329,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "min atrás";
             case "ч назад": return "h atrás";
             case "встроенных": return "integrados";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG e Worker são usados apenas quando configurados e disponíveis.";
             default: return trEn(key);
         }
     }
@@ -1404,6 +1410,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "دقيقة مضت";
             case "ч назад": return "ساعة مضت";
             case "встроенных": return "مدمجة";
+            case "AWG и Worker используются только когда настроены и доступны.": return "يتم استخدام AWG وWorker فقط عند إعدادهما وتوفرهما.";
             default: return trEn(key);
         }
     }
@@ -1484,6 +1491,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             case "мин назад": return "분 전";
             case "ч назад": return "시간 전";
             case "встроенных": return "내장";
+            case "AWG и Worker используются только когда настроены и доступны.": return "AWG와 Worker는 설정되어 있고 사용 가능한 경우에만 사용됩니다.";
             default: return trEn(key);
         }
     }
