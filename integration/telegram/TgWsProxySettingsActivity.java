@@ -40,7 +40,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
     private TextSettingsCell workerSummaryCell;
     private TextInfoPrivacyCell runtimeInfoCell;
     private TextInfoPrivacyCell cfOperationCell;
-    private TextInfoPrivacyCell awgProfileInfoCell;
+    private TextView awgProfileInfoCell;
     private TextInfoPrivacyCell awgOperationCell;
     private EditText cfDomainsEdit;
     private EditText workerEdit;
@@ -177,14 +177,28 @@ public class TgWsProxySettingsActivity extends BaseFragment {
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
-        awgProfileInfoCell = new TextInfoPrivacyCell(context);
+        awgProfileInfoCell = profileValueText(context);
         content.addView(awgProfileInfoCell, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
-        TextSettingsCell awgAction = actionCell(context, "Создать или импортировать профиль");
-        awgAction.setOnClickListener(v -> showAwgActionDialog(context));
-        content.addView(awgAction, LayoutHelper.createLinear(
+        TextSettingsCell createAwgAction = actionCell(context, "Создать автоматически");
+        createAwgAction.setOnClickListener(v -> showCreateAwgDialog(context));
+        content.addView(createAwgAction, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        TextSettingsCell importAwgAction = actionCell(context, "Импортировать .conf");
+        importAwgAction.setOnClickListener(v -> startAwgImport(context));
+        content.addView(importAwgAction, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        TextSettingsCell deleteAwgAction = settingsCell(context);
+        deleteAwgAction.setTextColor(Theme.getColor(Theme.key_text_RedBold));
+        deleteAwgAction.setText("Удалить профиль", false);
+        deleteAwgAction.setOnClickListener(v -> confirmDeleteAwgProfile(context));
+        content.addView(deleteAwgAction, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
@@ -310,12 +324,19 @@ public class TgWsProxySettingsActivity extends BaseFragment {
             statusCell.setTextAndValue("Состояние", state.status, true);
         }
         if (runtimeInfoCell != null) {
-            String backend = state.actualBackend.isEmpty()
-                    ? "не выбран"
-                    : state.actualBackend;
-            runtimeInfoCell.setText(state.lastError.isEmpty()
-                    ? "Активный backend: " + backend
-                    : "Backend: " + backend + "\nОшибка runtime: " + state.lastError);
+            if (!state.enabled) {
+                runtimeInfoCell.setText("Встроенный прокси выключен");
+            } else {
+                String backend = state.actualBackend;
+                if (backend.isEmpty()) {
+                    backend = TgWsProxyController.ROUTE_AUTO.equals(state.routeMode)
+                            ? "Автоматически"
+                            : "не выбран";
+                }
+                runtimeInfoCell.setText(state.lastError.isEmpty()
+                        ? "Активный backend: " + backend
+                        : "Backend: " + backend + "\nОшибка runtime: " + state.lastError);
+            }
         }
         if (routeCell != null) {
             routeCell.setTextAndValue(
@@ -402,43 +423,33 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         builder.show();
     }
 
-    private void showAwgActionDialog(Context context) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Профиль WARP / AmneziaWG");
+    private void startAwgImport(Context context) {
+        setAwgOperationStatus("Ожидание выбора .conf…");
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, REQUEST_IMPORT_AWG);
+    }
 
-        LinearLayout actions = new LinearLayout(context);
-        actions.setOrientation(LinearLayout.VERTICAL);
-        actions.setPadding(
-                AndroidUtilities.dp(16), AndroidUtilities.dp(8),
-                AndroidUtilities.dp(16), AndroidUtilities.dp(4)
-        );
-
-        TextView create = dialogActionButton(context, "Создать автоматически");
-        TextView importButton = dialogActionButton(context, "Импортировать .conf");
-        LinearLayout.LayoutParams actionParams =
-                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(48));
-        actions.addView(create, actionParams);
-        LinearLayout.LayoutParams importParams =
-                new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, AndroidUtilities.dp(48));
-        importParams.topMargin = AndroidUtilities.dp(8);
-        actions.addView(importButton, importParams);
-
-        builder.setView(actions);
-        builder.setNegativeButton("Отмена", null);
-        AlertDialog dialog = builder.create();
-        create.setOnClickListener(v -> {
-            dialog.dismiss();
-            showCreateAwgDialog(context);
-        });
-        importButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            setAwgOperationStatus("Ожидание выбора .conf…");
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("*/*");
-            startActivityForResult(intent, REQUEST_IMPORT_AWG);
-        });
-        dialog.show();
+    private void confirmDeleteAwgProfile(Context context) {
+        new AlertDialog.Builder(context)
+                .setTitle("Удалить WARP / AmneziaWG профиль?")
+                .setMessage("Сохранённый конфиг будет удалён с устройства.")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    setAwgOperationStatus("Удаление профиля…");
+                    TgWsProxyController.deleteAwgProfileAsync(
+                            context,
+                            (success, message) -> {
+                                setAwgOperationStatus(success
+                                        ? "Профиль удалён"
+                                        : "Ошибка удаления: " + message);
+                                toast(context, success ? "Профиль удалён" : message);
+                                refreshUi(context);
+                            }
+                    );
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void showCreateAwgDialog(Context context) {
@@ -545,17 +556,18 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         ));
     }
 
-    private static TextView dialogActionButton(Context context, String text) {
-        TextView button = new TextView(context);
-        button.setText(text);
-        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        button.setTypeface(AndroidUtilities.bold());
-        button.setGravity(Gravity.CENTER);
-        button.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
-        button.setBackground(Theme.AdaptiveRipple.filledRectByKey(
-                Theme.key_featuredStickers_addButton, 8
-        ));
-        return button;
+    private static TextView profileValueText(Context context) {
+        TextView view = new TextView(context);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        view.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        view.setGravity(Gravity.LEFT | Gravity.CENTER_VERTICAL);
+        view.setPadding(
+                AndroidUtilities.dp(17), AndroidUtilities.dp(12),
+                AndroidUtilities.dp(17), AndroidUtilities.dp(12)
+        );
+        view.setMinHeight(AndroidUtilities.dp(48));
+        view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        return view;
     }
 
     private static void addHeader(Context context, LinearLayout content, String text) {
