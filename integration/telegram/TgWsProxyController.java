@@ -17,7 +17,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -246,7 +248,7 @@ public final class TgWsProxyController {
 
             int working = 0;
             for (String domain : checkDomains) {
-                if (probeHttpsHost(domain)) {
+                if (probeCfDomain(domain)) {
                     working++;
                 }
             }
@@ -336,6 +338,33 @@ public final class TgWsProxyController {
                 complete(callback, true, "ok");
             } catch (Throwable error) {
                 complete(callback, false, "import_failed");
+            }
+        });
+    }
+
+    public static void exportAwgProfileAsync(Context context, Uri uri, Callback callback) {
+        Context appContext = context.getApplicationContext();
+        runAsync("TgWsProxyAwgExport", () -> {
+            File config = selectedAwgConfigFile(appContext);
+            if (!config.isFile()) {
+                complete(callback, false, "profile_not_configured");
+                return;
+            }
+            try (InputStream input = new java.io.FileInputStream(config);
+                 OutputStream output = appContext.getContentResolver().openOutputStream(uri, "wt")) {
+                if (output == null) {
+                    complete(callback, false, "export_open_failed");
+                    return;
+                }
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = input.read(buffer)) >= 0) {
+                    output.write(buffer, 0, read);
+                }
+                output.flush();
+                complete(callback, true, "ok");
+            } catch (Throwable error) {
+                complete(callback, false, "export_failed");
             }
         });
     }
@@ -906,6 +935,15 @@ public final class TgWsProxyController {
             }
         } finally {
             connection.disconnect();
+        }
+    }
+
+    private static boolean probeCfDomain(String host) {
+        try {
+            InetAddress[] addresses = InetAddress.getAllByName(host);
+            return addresses != null && addresses.length > 0;
+        } catch (Throwable ignore) {
+            return false;
         }
     }
 
