@@ -534,9 +534,10 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     }
 
     $preparedSettings = Get-Content $preparedSettingsPath -Raw
-    if ($preparedSettings -notmatch 'Создать автоматически' -or
-        $preparedSettings -notmatch 'Импортировать \.conf' -or
-        $preparedSettings -notmatch 'Удалить профиль' -or
+    if ($preparedSettings -notmatch 'Создать' -or
+        $preparedSettings -notmatch 'Импорт \.conf' -or
+        $preparedSettings -notmatch 'Экспорт \.conf' -or
+        $preparedSettings -notmatch 'Удалить' -or
         $preparedSettings -notmatch 'Для прокси' -or
         $preparedSettings -notmatch 'Для Amnezia') {
         throw 'Prepared TgWsProxy settings screen is missing the accepted compact UI controls.'
