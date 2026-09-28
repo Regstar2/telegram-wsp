@@ -135,6 +135,9 @@ if ($buildApkScript -notmatch '\[switch\]\$Offline') {
 if ($buildApkScript -notmatch 'ensure-telegram-theme-assets-lf\.ps1') {
     throw 'scripts/build-apk.ps1 must enforce LF Telegram theme assets before Gradle.'
 }
+if ($buildApkScript -notmatch 'gradle-wrapper\.jar' -or $buildApkScript -notmatch 'org\.gradle\.wrapper\.GradleWrapperMain') {
+    throw 'scripts/build-apk.ps1 must use the pinned Telegram Gradle wrapper instead of a hard-coded external Gradle version.'
+}
 if ($buildApkScript -notmatch 'Remove-Item -Force \$apk') {
     throw 'scripts/build-apk.ps1 must remove stale APK output before invoking Gradle.'
 }
@@ -204,6 +207,9 @@ if ($releaseWorkflow -match '(?m)^\s*\$home\s*=') {
 }
 if ($releaseWorkflow -notmatch '\$gradleHome\s*=\s*Join-Path') {
     throw 'Release workflow must use a dedicated Gradle home variable for the tgwsproxy-core toolchain.'
+}
+if ($releaseWorkflow -match "gradle-version:\s*'8\.11\.1'") {
+    throw 'Release workflow must not pin Telegram to obsolete Gradle 8.11.1; Telegram wrapper owns the required version.'
 }
 
 if ($releaseWorkflow -notmatch 'telegramBuild \* 1000' -or $releaseWorkflow -notmatch 'TELEGRAM_WSP_RELEASE_REVISION') {
@@ -335,6 +341,9 @@ if ($releaseBuildScript -notmatch 'SkipPrepare\s*=\s*\$true') {
 }
 if ($releaseBuildScript -notmatch 'TELEGRAM_WSP_KEYSTORE_PASSWORD') {
     throw 'Release build script must inject signing credentials only through the process environment.'
+}
+if ($releaseBuildScript -notmatch 'gradle-wrapper\.jar' -or $releaseBuildScript -notmatch 'org\.gradle\.wrapper\.GradleWrapperMain') {
+    throw 'Release build script must stop the same pinned Telegram Gradle wrapper used for the APK build.'
 }
 
 if ($releaseBuildScript -notmatch '\$password\s*=\s*\$env:TELEGRAM_WSP_KEYSTORE_PASSWORD') {
