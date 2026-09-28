@@ -17,6 +17,7 @@ import androidx.core.content.FileProvider;
 
 import org.json.JSONObject;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.utils.proxy.ProxySettings;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.LaunchActivity;
 
@@ -33,10 +34,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.regstar2.tgwsproxy.core.TgWsProxyConfig;
-import io.github.regstar2.tgwsproxy.core.TgWsProxyCore;
-import io.github.regstar2.tgwsproxy.core.TgWsProxyOperationResult;
-import io.github.regstar2.tgwsproxy.core.TgWsProxyStatus;
 
 public final class TgWsProxyBootstrap {
     private static final String PREFS = "tgwsproxy";
@@ -487,7 +484,13 @@ public final class TgWsProxyBootstrap {
     }
 
     private static void applyTelegramProxy(boolean enabled, String secret) {
-        Runnable apply = () -> ConnectionsManager.setProxySettings(enabled, HOST, PORT, "", "", secret);
+        ProxySettings settings = ProxySettings.builder()
+                .setType(ProxySettings.Type.MTPROTO)
+                .setAddress(HOST)
+                .setPort(PORT)
+                .setSecret(secret)
+                .build();
+        Runnable apply = () -> ConnectionsManager.setProxySettings(enabled, settings);
         Handler handler = ApplicationLoader.applicationHandler;
         if (handler != null) {
             handler.post(apply);
