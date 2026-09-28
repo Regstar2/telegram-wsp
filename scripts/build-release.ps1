@@ -116,9 +116,9 @@ if (-not (Test-Path $keystorePath)) {
     throw "Release keystore not found: $keystorePath. Run scripts/create-release-keystore.ps1 first."
 }
 
-$gradle = Get-Command gradle -ErrorAction SilentlyContinue
-if ($null -eq $gradle) {
-    throw 'Gradle was not found in PATH.'
+$java = Get-Command java -ErrorAction SilentlyContinue
+if ($null -eq $java) {
+    throw 'Java was not found in PATH.'
 }
 
 Write-Host 'Preparing Telegram integration...'
@@ -217,8 +217,21 @@ try {
         throw 'Custom release signingConfig was not applied.'
     }
 
-    Write-Host 'Stopping Gradle daemons before the R8 release build...'
-    & $gradle.Source --stop | Out-Null
+    Write-Host 'Stopping pinned Telegram Gradle daemons before the R8 release build...'
+    $gradleWrapperJar = Join-Path $telegram 'gradle/wrapper/gradle-wrapper.jar'
+    if (-not (Test-Path $gradleWrapperJar)) {
+        throw "Telegram Gradle wrapper JAR was not found: $gradleWrapperJar"
+    }
+    Push-Location $telegram
+    try {
+        & $java.Source -classpath $gradleWrapperJar org.gradle.wrapper.GradleWrapperMain --stop | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Telegram Gradle wrapper --stop failed with exit code $LASTEXITCODE."
+        }
+    }
+    finally {
+        Pop-Location
+    }
     Start-Sleep -Seconds 2
 
     $appBuild = Join-Path $telegram 'TMessagesProj_AppStandalone/build'
