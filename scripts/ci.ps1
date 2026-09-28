@@ -537,6 +537,17 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
         throw 'Prepared Telegram bootstrap must delegate proxy runtime startup to TgWsProxyController.'
     }
 
+    if ($preparedBootstrap -notmatch 'org\.telegram\.utils\.proxy\.ProxySettings' -or
+        $preparedBootstrap -notmatch 'ProxySettings\.builder\(\)' -or
+        $preparedBootstrap -notmatch 'setType\(ProxySettings\.Type\.MTPROTO\)' -or
+        $preparedBootstrap -notmatch 'ConnectionsManager\.setProxySettings\(enabled, settings\)') {
+        throw 'Prepared Telegram bootstrap must use Telegram ProxySettings API for managed proxy cleanup.'
+    }
+    if ($preparedBootstrap -match 'ConnectionsManager\.setProxySettings\(enabled, HOST, PORT' -or
+        $preparedBootstrap -match 'io\.github\.regstar2\.tgwsproxy\.core\.') {
+        throw 'Prepared Telegram bootstrap still contains legacy direct proxy-core integration.'
+    }
+
     $preparedControllerPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/messenger/TgWsProxyController.java'
     $preparedSettingsPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/ui/TgWsProxySettingsActivity.java'
     $preparedProxyListPath = Join-Path $telegramWorktree 'TMessagesProj/src/main/java/org/telegram/ui/ProxyListActivity.java'
