@@ -66,9 +66,14 @@ if ($controller -notmatch '@route_order=' -or
     throw 'Prepared TgWsProxy controller does not contain the required Wi-Fi/mobile route policies.'
 }
 
-$gradle = Get-Command gradle -ErrorAction SilentlyContinue
-if ($null -eq $gradle) {
-    throw 'Gradle was not found in PATH.'
+$java = Get-Command java -ErrorAction SilentlyContinue
+if ($null -eq $java) {
+    throw 'Java was not found in PATH.'
+}
+$gradleWrapperJar = Join-Path $telegram 'gradle/wrapper/gradle-wrapper.jar'
+$gradleWrapperProperties = Join-Path $telegram 'gradle/wrapper/gradle-wrapper.properties'
+if (-not (Test-Path $gradleWrapperJar) -or -not (Test-Path $gradleWrapperProperties)) {
+    throw 'Pinned Telegram Gradle wrapper is incomplete.'
 }
 
 if ($Full) {
@@ -90,7 +95,7 @@ Write-Host "Offline dependency resolution: $Offline"
 
 Push-Location $telegram
 try {
-    & $gradle.Source @gradleArgs
+    & $java.Source -classpath $gradleWrapperJar org.gradle.wrapper.GradleWrapperMain @gradleArgs
     if ($LASTEXITCODE -ne 0) {
         throw "Telegram APK build failed with exit code $LASTEXITCODE."
     }
