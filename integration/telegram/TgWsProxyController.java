@@ -939,8 +939,11 @@ public final class TgWsProxyController {
     }
 
     private static boolean probeCfDomain(String host) {
+        // CF Proxy connects to kws<dc>.<base-domain>, not to the bare base domain.
+        // Match the standalone app's diagnostic probe for DC2.
+        String routeHost = "kws2." + host;
         try {
-            InetAddress[] addresses = InetAddress.getAllByName(host);
+            InetAddress[] addresses = InetAddress.getAllByName(routeHost);
             return addresses != null && addresses.length > 0;
         } catch (Throwable ignore) {
             return false;
