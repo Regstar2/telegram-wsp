@@ -139,7 +139,7 @@ jobs:
           & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           $releaseExists = $?
           $forced = $env:FORCE_RELEASE -eq 'true'
-          $required = $changed -or $forced -or -not $releaseExists
+          $required = $forced -or ($changed -and -not $releaseExists)
 
           "release_required=$($required.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "release_ref=$releaseRef" >> $env:GITHUB_OUTPUT
