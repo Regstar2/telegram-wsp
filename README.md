@@ -75,7 +75,7 @@ Telegram-WSP использует собственные название, packa
 2. Разрешите Android устанавливать приложения из выбранного источника, если система запросит это.
 3. Установите APK и запустите Telegram-WSP.
 4. Войдите в Telegram как в обычном клиенте.
-5. При необходимости откройте штатные настройки прокси Telegram и выберите режим Telegram-WSP.
+5. При необходимости откройте штатные настройки прокси Telegram и выберите нужный режим маршрутизации.
 
 Для базового сценария отдельное приложение TgWsProxy на устройстве не требуется.
 
@@ -134,7 +134,7 @@ Cloudflare Proxy → WARP-AmneziaWG → Cloudflare Worker → Direct
 Cloudflare Proxy → WARP-AmneziaWG → Cloudflare Worker
 ```
 
-Direct intentionally не входит в мобильную Auto-цепочку.
+Direct намеренно не входит в мобильную Auto-цепочку.
 
 ### Cloudflare Proxy
 
