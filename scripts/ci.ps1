@@ -221,6 +221,13 @@ if ($upstreamWorkflow -notmatch 'schedule:' -or $upstreamWorkflow -notmatch 'syn
     throw 'Upstream workflow must check Telegram on a schedule and call the reusable release workflow.'
 }
 
+if ($upstreamWorkflow -notmatch '\$required\s*=\s*\$forced\s+-or\s+\(\$changed\s+-and\s+-not\s+\$releaseExists\)') {
+    throw 'Upstream release decision must require an upstream change unless force_release is explicit.'
+}
+if ($upstreamWorkflow -match '\$changed\s+-or\s+\$forced\s+-or\s+-not\s+\$releaseExists') {
+    throw 'Upstream release decision must not publish merely because the default revision tag is missing.'
+}
+
 if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
     throw 'Upstream workflow must fail before changing main when release secrets are not configured.'
 }
