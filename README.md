@@ -2,9 +2,10 @@
 
 # Telegram-WSP
 
-Неофициальный форк Telegram для Android со встроенным TgWsProxy: прокси запускается внутри клиента и не требует отдельного приложения или собственного VPS. Проект сохраняет Telegram максимально близким к upstream и не изменяет `tgnet`.
+Неофициальный форк Telegram для Android со встроенным TgWsProxy: прокси работает внутри клиента и не требует отдельного приложения или собственного VPS. Проект сохраняет Telegram максимально близким к upstream и не изменяет `TMessagesProj/jni/tgnet/`.
 
 [![Release](https://img.shields.io/github/v/release/Regstar2/telegram-wsp?display_name=tag&sort=semver&style=for-the-badge&logo=github&label=release)](../../releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Regstar2/telegram-wsp/trusted-ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI)](../../actions/workflows/trusted-ci.yml)
 [![Platform](https://img.shields.io/badge/platform-Android%205.0%2B-0A7EA4?style=for-the-badge)](#требования)
 [![License](https://img.shields.io/github/license/Regstar2/telegram-wsp?style=for-the-badge&label=license)](LICENSE)
 
@@ -19,50 +20,54 @@
 
 ## О проекте
 
-Telegram-WSP встраивает TgWsProxy непосредственно в Telegram Android. При запуске приложение поднимает локальный proxy runtime на `127.0.0.1:1443` и подключает его через штатный proxy API Telegram.
+Telegram-WSP встраивает TgWsProxy непосредственно в Telegram Android. Приложение поднимает локальный proxy runtime на `127.0.0.1:1443` и подключает его через штатный proxy API Telegram.
 
-Основная задача проекта — получить обычный Telegram-клиент с WebSocket/Cloudflare transport без отдельного TgWsProxy-приложения и без переноса собственного transport-кода в Telegram networking.
+Цель проекта — дать обычный Telegram-клиент с WebSocket/Cloudflare-маршрутами и резервными вариантами соединения без отдельного TgWsProxy-приложения и без переноса собственного transport-кода в Telegram networking.
 
-Проект построен как небольшой воспроизводимый overlay поверх [DrKLO/Telegram](https://github.com/DrKLO/Telegram). Сам исходный код Telegram целиком в этом репозитории не хранится.
+Проект построен как воспроизводимый overlay поверх [DrKLO/Telegram](https://github.com/DrKLO/Telegram). Полный исходный код Telegram в репозитории не хранится: нужный upstream checkout загружается по закреплённому commit.
 
 ### Принципы интеграции
 
-Главный инженерный принцип Telegram-WSP — **минимально изменять оригинальный Telegram**. Интеграция вынесена в небольшой overlay, не меняет `TMessagesProj/jni/tgnet/` и на текущем pinned upstream затрагивает только **8 source-level upstream-путей**. Это снижает количество конфликтов и стоимость переноса на новые версии Telegram.
+Главный принцип Telegram-WSP — **минимально изменять оригинальный Telegram**. Интеграция вынесена в отдельный overlay, не меняет `TMessagesProj/jni/tgnet/` и на текущем pinned upstream затрагивает только ограниченный набор source-level путей.
 
-Telegram-WSP использует собственные название, package ID, launcher icon и release-подпись, чтобы не выдавать себя за официальный клиент. Это соответствует [опубликованным требованиям Telegram для сторонних приложений](https://github.com/DrKLO/Telegram#creating-your-telegram-application): разработчик должен либо не использовать имя Telegram, либо явно показывать неофициальный статус приложения, а стандартный логотип Telegram использовать нельзя. Поэтому проект называется **Telegram-WSP**, в README явно обозначен как неофициальный форк и использует собственную иконку.
+Telegram-WSP использует собственные название, package ID, launcher icon и release-подпись, чтобы не выдавать себя за официальный клиент. Проект является независимым неофициальным форком Telegram for Android.
 
 ## Статус проекта
 
 Стадия: **MVP**.
 
-Текущий публичный релиз: **[v12.10.1-wsp.1](../../releases/tag/v12.10.1-wsp.1)**.
+Текущий публичный релиз: **[v12.10.5-wsp.2](../../releases/tag/v12.10.5-wsp.2)**.
 
 | Компонент | Текущее состояние |
 |---|---|
 | Telegram upstream | 12.10.5, build 7105 |
+| Telegram commit | `dc780e81ed1261c369c27870e8e0999a1eb0b600` |
+| tgwsproxy-core commit | `8016d1b56210e8edc69da9d637416b70b30971a8` |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
+| Экран управления прокси | Встроен в настройки прокси Telegram |
 | Подписанный APK | Публикуется через GitHub Releases |
-| Device smoke test | Пройдены запуск, UI, вход и встроенный proxy |
-| Автообновление | Реализовано через GitHub Releases |
-| Upstream sync | Ежедневная автоматическая проверка `DrKLO/Telegram`, валидация overlay и автоматический выпуск совместимой версии |
+| Автообновление приложения | Реализовано через GitHub Releases |
+| Upstream sync | Автоматическая проверка DrKLO/Telegram с integration gates |
 
-Первый полностью облачный release pipeline успешно собрал и опубликовал `v12.10.1-wsp.1` через GitHub Actions. Дальнейшие обновления Telegram upstream также обслуживаются автоматизированным pipeline: новая версия принимается только после успешного воспроизведения integration overlay и прохождения CI gates.
+Релиз `v12.10.5-wsp.2` включает новый экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
 
 ## Возможности
 
 - встроенный TgWsProxy runtime без отдельного Android-приложения;
 - локальный MTProto proxy на `127.0.0.1:1443`;
-- автоматический запуск proxy runtime вместе с Telegram-WSP;
-- использование штатного `ConnectionsManager.setProxySettings(...)`, без патчей `TMessagesProj/jni/tgnet/`;
-- компактный встроенный экран управления proxy: Auto / Cloudflare Proxy / WARP-AmneziaWG / Cloudflare Worker / Direct;
-- управление Cloudflare-доменами, WARP/AmneziaWG-профилем и отдельными Worker pools;
-- WebSocket/Cloudflare transport с упорядоченными fallback-маршрутами из `tgwsproxy-core`;
-- собственные название, launcher icon, package ID и постоянная release-подпись для явного отличия от официального Telegram;
+- использование штатного `ConnectionsManager.setProxySettings(...)` без патчей Telegram `tgnet`;
+- режимы маршрутизации **Auto / Cloudflare Proxy / WARP-AmneziaWG / Cloudflare Worker / Direct**;
+- разные цепочки Auto для Wi-Fi и мобильной сети;
+- ввод, обновление и проверка списка Cloudflare-доменов;
+- создание, импорт, экспорт и удаление WARP/AmneziaWG-профиля;
+- независимые списки Worker для Proxy Worker и Amnezia provisioning Worker;
+- локализация встроенного интерфейса для локалей текущей версии Telegram;
+- собственные название, launcher icon, package ID и постоянная release-подпись;
 - встроенная проверка обновлений через GitHub Releases;
 - проверка скачанного APK по SHA-256, package ID и signing certificate;
-- автоматическая проверка новых Telegram version/build и выпуск обновления после успешных integration gates;
-- публикация точного Corresponding Source для каждого публичного APK.
+- автоматическая проверка новых Telegram version/build с валидацией integration overlay;
+- публикация Corresponding Source для каждого публичного APK.
 
 ## Быстрый старт
 
@@ -70,8 +75,9 @@ Telegram-WSP использует собственные название, packa
 2. Разрешите Android устанавливать приложения из выбранного источника, если система запросит это.
 3. Установите APK и запустите Telegram-WSP.
 4. Войдите в Telegram как в обычном клиенте.
+5. При необходимости откройте штатные настройки прокси Telegram и выберите режим Telegram-WSP.
 
-Встроенный proxy запускается автоматически; отдельное приложение TgWsProxy на устройстве не требуется.
+Для базового сценария отдельное приложение TgWsProxy на устройстве не требуется.
 
 ## Требования
 
@@ -81,11 +87,11 @@ Telegram-WSP использует собственные название, packa
 - доступ в интернет;
 - разрешение Android на установку APK не из магазина.
 
-Для сборки из исходников используются JDK 17, Go 1.25.x, Android SDK, NDK 27.2.12479018 и Gradle. Точные версии для production release зафиксированы в [release.yml](.github/workflows/release.yml).
+Для сборки из исходников используются JDK 17, Go 1.25.x, Android SDK, NDK 27.2.12479018 и Gradle. Точные production-настройки зафиксированы в [release.yml](.github/workflows/release.yml).
 
 ## Установка
 
-Актуальный APK всегда публикуется в [GitHub Releases](../../releases).
+Актуальный APK публикуется в [GitHub Releases](../../releases).
 
 Имя пакета:
 
@@ -93,9 +99,9 @@ Telegram-WSP использует собственные название, packa
 org.telegram.messenger.web
 ```
 
-Telegram-WSP использует постоянный release key. Новая версия может устанавливаться поверх предыдущей Telegram-WSP-сборки только при совпадении package ID и сертификата подписи.
+Telegram-WSP использует постоянный release key. Новая версия устанавливается поверх предыдущей Telegram-WSP-сборки только при совпадении package ID и сертификата подписи.
 
-Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит выполнить обновление поверх него.
+Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит обновить его поверх существующей установки.
 
 ## Использование
 
@@ -104,11 +110,47 @@ Telegram-WSP использует постоянный release key. Новая �
 1. `TgWsProxyBootstrap` запускает `tgwsproxy-core`;
 2. core открывает локальный listener `127.0.0.1:1443`;
 3. Telegram получает эту конфигурацию через штатный proxy API;
-4. дальнейший трафик проходит через выбранный TgWsProxy transport.
+4. трафик проходит через выбранный маршрут Telegram-WSP.
 
-Отдельной настройки для базового сценария не требуется.
+Если встроенный runtime не запускается, Telegram-WSP не должен произвольно сбрасывать стороннюю proxy-конфигурацию пользователя.
 
-Если встроенный runtime не запускается, Telegram-WSP не включает managed localhost proxy. Сторонняя proxy-конфигурация пользователя при этом не должна сбрасываться произвольно.
+Настройки Cloudflare, WARP/AmneziaWG и Worker pools доступны из встроенного экрана управления прокси.
+
+## Режимы работы
+
+### Auto
+
+Telegram-WSP выбирает цепочку автоматически в зависимости от типа сети.
+
+**Wi-Fi:**
+
+```text
+Cloudflare Proxy → WARP-AmneziaWG → Cloudflare Worker → Direct
+```
+
+**Мобильная сеть:**
+
+```text
+Cloudflare Proxy → WARP-AmneziaWG → Cloudflare Worker
+```
+
+Direct intentionally не входит в мобильную Auto-цепочку.
+
+### Cloudflare Proxy
+
+Использует настроенный список Cloudflare-доменов. Экран управления позволяет изменить список, подтянуть актуальные домены и проверить их доступность.
+
+### WARP-AmneziaWG
+
+Использует WARP/AmneziaWG-профиль. Профиль можно создать, импортировать, экспортировать или удалить из интерфейса Telegram-WSP.
+
+### Cloudflare Worker
+
+Использует отдельный список Proxy Worker. Список Amnezia provisioning Worker хранится независимо и применяется для соответствующего provisioning-сценария.
+
+### Direct
+
+Пытается использовать прямой маршрут без Cloudflare Proxy, AWG и Worker. В Auto этот fallback доступен только для Wi-Fi.
 
 ## Сеть и прокси
 
@@ -124,15 +166,15 @@ Telegram-WSP
      ▼
 tgwsproxy-core
      │
-     ├─ cf_proxy_ws
-     ├─ direct_ws
-     ├─ cf_worker_ws
-     └─ tcp_fallback
+     ├─ Cloudflare Proxy
+     ├─ WARP / AmneziaWG
+     ├─ Cloudflare Worker
+     └─ Direct
 ```
 
-По умолчанию runtime использует режим `cf_first`: сначала WebSocket/Cloudflare transport, затем разрешённые fallback-маршруты.
+Порядок маршрутов задаётся выбранным режимом. Telegram networking видит только локальный proxy endpoint и не содержит реализации transport Telegram-WSP.
 
-Telegram networking не знает о реализации transport за localhost proxy. Это уменьшает собственный diff и количество конфликтов при обновлении upstream.
+Такой подход уменьшает собственный diff и снижает количество конфликтов при обновлении Telegram upstream.
 
 ## Архитектура
 
@@ -151,8 +193,6 @@ tgwsproxy-core
       ▼
 libtgwsproxy.so
 ```
-
-Текущий source-level integration diff ограничен **8 upstream-путями**, а `TMessagesProj/jni/tgnet/` не изменяется.
 
 Исходный Telegram checkout загружается по точному commit из [config/upstream.json](config/upstream.json), а `tgwsproxy-core` — из [config/core.json](config/core.json). Generated worktree создаётся в `.work/` и не коммитится.
 
@@ -191,16 +231,16 @@ https://github.com/Regstar2/telegram-wsp/releases/latest/download/latest.json
 versionCode = telegramBuild * 1000 + wspRevision * 10 + 9
 ```
 
-Поэтому WSP hotfix той же версии Telegram может корректно обновляться поверх предыдущего WSP-релиза.
+Поэтому WSP hotfix той же версии Telegram может обновляться поверх предыдущего WSP-релиза.
 
 ### Автоматическое обновление Telegram upstream
 
-Обновление Telegram-WSP состоит из двух независимых уровней:
+Обновление состоит из двух независимых уровней:
 
-1. **Исходный Telegram → Telegram-WSP.** Workflow [upstream-sync.yml](.github/workflows/upstream-sync.yml) ежедневно проверяет официальный репозиторий [DrKLO/Telegram](https://github.com/DrKLO/Telegram). Если обнаружена новая version/build, workflow обновляет pinned commit в `config/upstream.json`, заново воспроизводит integration overlay и запускает проектные CI gates.
-2. **Telegram-WSP → устройство пользователя.** Только после успешной проверки совместимости workflow вызывает [release.yml](.github/workflows/release.yml), который собирает полный подписанный APK, формирует metadata и Corresponding Source и публикует новый GitHub Release. Установленное приложение затем обнаруживает этот релиз через `latest.json` и предлагает обновление пользователю.
+1. **DrKLO/Telegram → Telegram-WSP.** Workflow [upstream-sync.yml](.github/workflows/upstream-sync.yml) проверяет официальный upstream, обновляет pinned commit, воспроизводит integration overlay и запускает project gates.
+2. **Telegram-WSP → устройство.** После успешной проверки совместимости [release.yml](.github/workflows/release.yml) собирает подписанный APK, формирует metadata и Corresponding Source и публикует GitHub Release. Установленное приложение обнаруживает релиз через `latest.json`.
 
-Если overlay не применяется или проверки не проходят, новый upstream pin не должен становиться публичным Telegram-WSP-релизом. Таким образом, проект автоматически подтягивает новые версии из официального репозитория Telegram, но не публикует их без проверки совместимости.
+Если overlay не применяется или проверки не проходят, новая версия Telegram не должна становиться публичным Telegram-WSP-релизом.
 
 ## Разработка
 
@@ -218,10 +258,10 @@ cd telegram-wsp
 
 - [config/upstream.json](config/upstream.json) — pinned Telegram commit и version/build;
 - [config/core.json](config/core.json) — pinned `tgwsproxy-core`;
-- [integration/](integration/) — собственный integration/branding layer;
-- [scripts/](scripts/) — воспроизводимые fetch/build/release операции.
+- [integration/](integration/) — integration/branding layer;
+- [scripts/](scripts/) — fetch/build/release операции.
 
-Для локальной сборки с собственными Telegram `api_id` / `api_hash` используйте environment variables `TELEGRAM_API_ID` и `TELEGRAM_API_HASH` либо локальный `.work/telegram/local.properties`. Реальные credentials нельзя коммитить или публиковать в Issue/PR.
+Для локальной сборки с собственными Telegram `api_id` / `api_hash` используйте environment variables `TELEGRAM_API_ID` и `TELEGRAM_API_HASH` либо локальный `.work/telegram/local.properties`. Credentials нельзя коммитить или публиковать в Issue/PR.
 
 ## Сборка
 
@@ -231,7 +271,7 @@ cd telegram-wsp
 ./scripts/build-apk.ps1
 ```
 
-Полная `afatStandalone` сборка с R8 и всеми ABI:
+Полная `afatStandalone` сборка:
 
 ```powershell
 ./scripts/build-apk.ps1 -Full
@@ -273,7 +313,7 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 - воспроизводит Telegram overlay с чистого pinned upstream;
 - повторно запускает проверки на подготовленном worktree.
 
-Перед публичным релизом production workflow дополнительно выполняет полную подписанную `afatStandalone` сборку и проверяет package, branding и APK signature.
+Перед публичным релизом production workflow дополнительно выполняет подписанную сборку и проверяет package, branding и APK signature.
 
 ## Документация
 
@@ -283,7 +323,7 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 - [Лицензирование](docs/licensing.md) — GPL-модель, third-party компоненты и Corresponding Source;
 - [NOTICE.md](NOTICE.md) — third-party notices.
 
-Точные исходные компоненты каждой публичной сборки также прикладываются к GitHub Release вместе с `SOURCE_MANIFEST.json` и `SHA256SUMS.txt`.
+Точные исходные компоненты каждой публичной сборки прикладываются к GitHub Release вместе с `SOURCE_MANIFEST.json` и `SHA256SUMS.txt`.
 
 ## Обратная связь
 
@@ -293,8 +333,9 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 
 - модель устройства и версию Android;
 - версию Telegram-WSP;
+- выбранный режим маршрутизации;
 - что ожидалось и что произошло;
-- воспроизводится ли проблема без сторонней proxy-конфигурации.
+- воспроизводится ли проблема с другим режимом.
 
 Не публикуйте Telegram API credentials, signing keys, access tokens и другие секреты.
 
@@ -303,12 +344,12 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 Telegram-WSP основан на:
 
 - [DrKLO/Telegram](https://github.com/DrKLO/Telegram) — официальный исходный код Telegram for Android;
-- [Regstar2/tgwsproxy-core](https://github.com/Regstar2/tgwsproxy-core) — переиспользуемое Android/native ядро, извлечённое из `Regstar2/tg-ws-proxy-android`;
-- [Regstar2/tg-ws-proxy-android](https://github.com/Regstar2/tg-ws-proxy-android) — форк Android-обёртки TgWsProxy и непосредственный источник runtime для первого выделения core;
-- [amurcanov/tg-ws-proxy-android](https://github.com/amurcanov/tg-ws-proxy-android) — исходная Android-обёртка, от которой был создан форк `Regstar2/tg-ws-proxy-android`;
-- [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) — первоначальный TgWsProxy/WebSocket runtime, на котором основана Android-ветка.
+- [Regstar2/tgwsproxy-core](https://github.com/Regstar2/tgwsproxy-core) — переиспользуемое Android/native ядро;
+- [Regstar2/tg-ws-proxy-android](https://github.com/Regstar2/tg-ws-proxy-android) — форк Android-обёртки TgWsProxy и источник ранней Android-интеграции;
+- [amurcanov/tg-ws-proxy-android](https://github.com/amurcanov/tg-ws-proxy-android) — исходная Android-обёртка, от которой создан форк;
+- [Flowseal/tg-ws-proxy](https://github.com/Flowseal/tg-ws-proxy) — первоначальный TgWsProxy/WebSocket runtime.
 
-Происхождение proxy runtime можно кратко представить так:
+Происхождение proxy runtime:
 
 ```text
 Flowseal/tg-ws-proxy
@@ -328,8 +369,9 @@ Telegram-WSP является независимым неофициальным 
 
 - проект находится на стадии MVP;
 - поддерживается только Android;
-- распространение сейчас выполняется через GitHub Releases, а не Google Play или RuStore;
-- встроенный proxy имеет компактный Telegram-style UI для выбора маршрута, Cloudflare-доменов, WARP/AmneziaWG и Worker pools;
+- распространение выполняется через GitHub Releases, а не Google Play или RuStore;
+- доступность конкретного маршрута зависит от сети, Cloudflare-доменов, Worker и WARP/AmneziaWG-конфигурации;
+- Direct не используется как fallback мобильного Auto-режима;
 - обновления требуют системного подтверждения установки Android;
 - совместимость с новой версией Telegram принимается только после успешного применения overlay и CI/release gates;
 - проект не изменяет и не открывает платные функции Telegram.
