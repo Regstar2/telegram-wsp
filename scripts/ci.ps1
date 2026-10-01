@@ -231,7 +231,7 @@ if ($upstreamWorkflow -match '\$changed\s+-or\s+\$forced\s+-or\s+-not\s+\$releas
 if (-not $upstreamWorkflow.Contains('gh release list') -or
     -not $upstreamWorkflow.Contains('isDraft,isPrerelease') -or
     -not $upstreamWorkflow.Contains('Measure-Object -Maximum') -or
-    -not $upstreamWorkflow.Contains("tagName -match '^v.+-wsp\\.(\\d+)\$'")) {
+    -not $upstreamWorkflow.Contains("tagName -match '^v.+-wsp\.(\d+)$'")) {
     throw 'Upstream sync must inherit the highest stable WSP revision when no explicit revision is requested.'
 }
 if (-not $upstreamWorkflow.Contains("default: ''")) {
