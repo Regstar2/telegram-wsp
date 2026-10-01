@@ -11,10 +11,10 @@ on:
         type: boolean
         default: false
       revision:
-        description: Telegram-WSP release revision.
-        required: true
+        description: Optional Telegram-WSP revision override. Empty inherits the latest stable WSP revision.
+        required: false
         type: string
-        default: '1'
+        default: ''
 
 permissions:
   contents: write
@@ -129,8 +129,31 @@ jobs:
           REQUESTED_REVISION: ${{ inputs.revision }}
         run: |
           $config = Get-Content 'config/upstream.json' -Raw | ConvertFrom-Json
-          $revision = if ([string]::IsNullOrWhiteSpace($env:REQUESTED_REVISION)) { '1' } else { $env:REQUESTED_REVISION }
-          if ($revision -notmatch '^\d+$') { throw 'revision must contain decimal digits only.' }
+          $requestedRevision = if ($null -eq $env:REQUESTED_REVISION) { '' } else { $env:REQUESTED_REVISION.Trim() }
+          if (-not [string]::IsNullOrWhiteSpace($requestedRevision) -and $requestedRevision -notmatch '^\d+$') {
+            throw 'revision must contain decimal digits only.'
+          }
+
+          if ([string]::IsNullOrWhiteSpace($requestedRevision)) {
+            $releaseJson = & gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft,isPrerelease
+            if ($LASTEXITCODE -ne 0) { throw 'Failed to list GitHub Releases while resolving the WSP revision.' }
+            $releaseData = (($releaseJson -join [Environment]::NewLine) | ConvertFrom-Json)
+            $knownRevisions = @(
+              foreach ($release in $releaseData) {
+                if ($release.isDraft -or $release.isPrerelease) { continue }
+                if ([string]$release.tagName -match '^v.+-wsp\.(\d+)$') {
+                  [int]$Matches[1]
+                }
+              }
+            )
+            $revision = if ($knownRevisions.Count -eq 0) {
+              '1'
+            } else {
+              [string](($knownRevisions | Measure-Object -Maximum).Maximum)
+            }
+          } else {
+            $revision = $requestedRevision
+          }
 
           $changed = '${{ steps.upstream.outputs.changed }}' -eq 'true'
           $releaseRef = if ($changed) { '${{ steps.commit.outputs.sha }}' } else { (git rev-parse HEAD).Trim() }
