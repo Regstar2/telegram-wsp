@@ -1,8 +1,8 @@
 {
   "repository": "https://github.com/DrKLO/Telegram.git",
   "branch": "master",
-  "pinnedCommit": "dc780e81ed1261c369c27870e8e0999a1eb0b600",
-  "telegramVersion": "12.10.5",
-  "telegramBuild": 7105,
-  "pinnedAt": "2026-09-28"
+  "pinnedCommit": "f2908b14133bbffbf7ab04f641ecb5bfaf533242",
+  "telegramVersion": "12.10.6",
+  "telegramBuild": 7112,
+  "pinnedAt": "2026-10-01"
 }
