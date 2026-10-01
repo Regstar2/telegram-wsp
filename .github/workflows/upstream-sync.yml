@@ -130,39 +130,7 @@ jobs:
         run: |
           $config = Get-Content 'config/upstream.json' -Raw | ConvertFrom-Json
           $requestedRevision = if ($null -eq $env:REQUESTED_REVISION) { '' } else { $env:REQUESTED_REVISION.Trim() }
-          if (-not [string]::IsNullOrWhiteSpace($requestedRevision) -and $requestedRevision -notmatch '^\d+
-          $releaseRef = if ($changed) { '${{ steps.commit.outputs.sha }}' } else { (git rev-parse HEAD).Trim() }
-          $tag = "v$($config.telegramVersion)-wsp.$revision"
-
-          & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
-          $releaseExists = $?
-          $forced = $env:FORCE_RELEASE -eq 'true'
-          $required = $forced -or ($changed -and -not $releaseExists)
-
-          "release_required=$($required.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "release_ref=$releaseRef" >> $env:GITHUB_OUTPUT
-          "revision=$revision" >> $env:GITHUB_OUTPUT
-
-          Write-Host "Tag: $tag"
-          Write-Host "Release exists: $releaseExists"
-          Write-Host "Release required: $required"
-          Write-Host "Release ref: $releaseRef"
-
-          # A missing release is expected on first publication. Do not propagate
-          # the non-zero exit code from 'gh release view' to the pwsh process.
-          exit 0
-
-  release:
-    name: Publish validated Telegram-WSP update
-    needs: sync
-    if: needs.sync.outputs.release_required == 'true'
-    uses: ./.github/workflows/release.yml
-    with:
-      ref: ${{ needs.sync.outputs.release_ref }}
-      revision: ${{ needs.sync.outputs.revision }}
-      prerelease: false
-    secrets: inherit
-) {
+          if (-not [string]::IsNullOrWhiteSpace($requestedRevision) -and $requestedRevision -notmatch '^\d+$') {
             throw 'revision must contain decimal digits only.'
           }
 
@@ -173,39 +141,7 @@ jobs:
             $knownRevisions = @(
               foreach ($release in $releaseData) {
                 if ($release.isDraft -or $release.isPrerelease) { continue }
-                if ([string]$release.tagName -match '^v.+-wsp\.(\d+)
-          $releaseRef = if ($changed) { '${{ steps.commit.outputs.sha }}' } else { (git rev-parse HEAD).Trim() }
-          $tag = "v$($config.telegramVersion)-wsp.$revision"
-
-          & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
-          $releaseExists = $?
-          $forced = $env:FORCE_RELEASE -eq 'true'
-          $required = $forced -or ($changed -and -not $releaseExists)
-
-          "release_required=$($required.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "release_ref=$releaseRef" >> $env:GITHUB_OUTPUT
-          "revision=$revision" >> $env:GITHUB_OUTPUT
-
-          Write-Host "Tag: $tag"
-          Write-Host "Release exists: $releaseExists"
-          Write-Host "Release required: $required"
-          Write-Host "Release ref: $releaseRef"
-
-          # A missing release is expected on first publication. Do not propagate
-          # the non-zero exit code from 'gh release view' to the pwsh process.
-          exit 0
-
-  release:
-    name: Publish validated Telegram-WSP update
-    needs: sync
-    if: needs.sync.outputs.release_required == 'true'
-    uses: ./.github/workflows/release.yml
-    with:
-      ref: ${{ needs.sync.outputs.release_ref }}
-      revision: ${{ needs.sync.outputs.revision }}
-      prerelease: false
-    secrets: inherit
-) {
+                if ([string]$release.tagName -match '^v.+-wsp\.(\d+)$') {
                   [int]$Matches[1]
                 }
               }
