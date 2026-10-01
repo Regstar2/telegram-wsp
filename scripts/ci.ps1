@@ -228,6 +228,16 @@ if ($upstreamWorkflow -match '\$changed\s+-or\s+\$forced\s+-or\s+-not\s+\$releas
     throw 'Upstream release decision must not publish merely because the default revision tag is missing.'
 }
 
+if (-not $upstreamWorkflow.Contains('gh release list') -or
+    -not $upstreamWorkflow.Contains('isDraft,isPrerelease') -or
+    -not $upstreamWorkflow.Contains('Measure-Object -Maximum') -or
+    -not $upstreamWorkflow.Contains("tagName -match '^v.+-wsp\\.(\\d+)\$'")) {
+    throw 'Upstream sync must inherit the highest stable WSP revision when no explicit revision is requested.'
+}
+if (-not $upstreamWorkflow.Contains("default: ''")) {
+    throw 'Upstream sync revision override must default to empty so scheduled runs can inherit the stable WSP revision.'
+}
+
 if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
     throw 'Upstream workflow must fail before changing main when release secrets are not configured.'
 }
