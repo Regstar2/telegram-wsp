@@ -37,6 +37,7 @@ $required = @(
     'scripts/bootstrap-release-actions.ps1',
     'scripts/diagnose-xiaomi-dark-mode.ps1',
     'scripts/ensure-telegram-theme-assets-lf.ps1',
+    '.github/workflows/trusted-ci.yml',
     '.github/workflows/release.yml',
     '.github/workflows/upstream-sync.yml'
 )
@@ -154,6 +155,12 @@ if ($buildApkScript -notmatch 'themeBytes -contains \[byte\]13') {
 $buildCoreScript = Get-Content (Join-Path $root 'scripts/build-core.ps1') -Raw
 if ($buildCoreScript -notmatch 'TGWSP_CORE_GRADLE') {
     throw 'Core build script must support a dedicated Gradle 8.2.1 executable for release CI.'
+}
+
+$trustedCiWorkflow = Get-Content (Join-Path $root '.github/workflows/trusted-ci.yml') -Raw
+$trustedCiWorkflowNormalized = $trustedCiWorkflow -replace "`r`n", "`n"
+if (-not $trustedCiWorkflowNormalized.Contains("  push:`n    branches:`n      - main")) {
+    throw 'Trusted CI must run on pushes to main so the default branch has a CI status.'
 }
 
 $syncUpstreamScript = Get-Content (Join-Path $root 'scripts/sync-upstream.ps1') -Raw
