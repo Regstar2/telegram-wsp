@@ -33,6 +33,8 @@ $required = @(
     'scripts/build-release.ps1',
     'scripts/create-release-keystore.ps1',
     'scripts/sync-upstream.ps1',
+    'scripts/resolve-upstream-release.ps1',
+    'scripts/test-upstream-release-decision.ps1',
     'scripts/package-release-source.ps1',
     'scripts/bootstrap-release-actions.ps1',
     'scripts/diagnose-xiaomi-dark-mode.ps1',
@@ -67,6 +69,8 @@ foreach ($scriptFile in $powerShellScripts) {
         throw "PowerShell syntax error in $($scriptFile.Name): $($details -join '; ')"
     }
 }
+
+& (Join-Path $root 'scripts/test-upstream-release-decision.ps1')
 
 $diagnosticScript = Get-Content (Join-Path $root 'scripts/diagnose-xiaomi-dark-mode.ps1') -Raw
 if ($diagnosticScript -match '\[string\[\]\]\$Args') {
@@ -228,32 +232,25 @@ if ($upstreamWorkflow -notmatch 'schedule:' -or $upstreamWorkflow -notmatch 'syn
     throw 'Upstream workflow must check Telegram on a schedule and call the reusable release workflow.'
 }
 
-if ($upstreamWorkflow -notmatch '\$required\s*=\s*\$forced\s+-or\s+\(\$changed\s+-and\s+-not\s+\$releaseExists\)') {
-    throw 'Upstream release decision must require an upstream change unless force_release is explicit.'
-}
-if ($upstreamWorkflow -match '\$changed\s+-or\s+\$forced\s+-or\s+-not\s+\$releaseExists') {
-    throw 'Upstream release decision must not publish merely because the default revision tag is missing.'
-}
 
-if (-not $upstreamWorkflow.Contains('gh release list') -or
-    -not $upstreamWorkflow.Contains('isDraft,isPrerelease') -or
-    -not $upstreamWorkflow.Contains('Measure-Object -Maximum') -or
-    -not $upstreamWorkflow.Contains("tagName -match '^v.+-wsp\.(\d+)$'")) {
-    throw 'Upstream sync must inherit the highest stable WSP revision when no explicit revision is requested.'
+if ($upstreamWorkflow -notmatch 'resolve-upstream-release\.ps1' -or
+    $upstreamWorkflow -notmatch 'gh release list' -or
+    $upstreamWorkflow -notmatch 'isDraft,isPrerelease' -or
+    $upstreamWorkflow -notmatch 'release_required=' -or
+    $upstreamWorkflow -notmatch 'release_ref=' -or
+    $upstreamWorkflow -notmatch 'revision=') {
+    throw 'Upstream release decision must use the tested, revision-aware stable resolver.'
 }
-if (-not $upstreamWorkflow.Contains("default: ''")) {
-    throw 'Upstream sync revision override must default to empty so scheduled runs can inherit the stable WSP revision.'
+if ($upstreamWorkflow -notmatch "default: ''") {
+    throw 'Upstream sync revision override must default to empty so scheduled runs inherit stable WSP revision.'
 }
-
-if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
-    throw 'Upstream workflow must fail before changing main when release secrets are not configured.'
+if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or
+    $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
+    throw 'Upstream workflow must validate release secrets before committing the pin.'
 }
-
-if (-not $upstreamWorkflow.Contains('$releaseExists = $?')) {
-    throw 'Upstream release decision must capture whether the GitHub Release exists.'
-}
-if (-not $upstreamWorkflow.Contains('exit 0')) {
-    throw 'Upstream release decision must clear the expected missing-release native exit code.'
+if ($upstreamWorkflow -notmatch 'Compile candidate APK before changing main' -or
+    $upstreamWorkflow -notmatch 'build-apk\.ps1 -SkipPrepare') {
+    throw 'A changed upstream must compile before its pin is pushed to main.'
 }
 
 $releaseBootstrapScript = Get-Content (Join-Path $root 'scripts/bootstrap-release-actions.ps1') -Raw
