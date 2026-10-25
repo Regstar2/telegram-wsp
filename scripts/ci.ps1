@@ -212,6 +212,10 @@ if ($releaseWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64' -or $releaseWorkflow -n
 if ($releaseWorkflow -notmatch 'latest\.json' -or $releaseWorkflow -notmatch 'package-release-source\.ps1') {
     throw 'Release workflow must publish the update feed and Corresponding Source assets.'
 }
+if ($releaseWorkflow -match 'gh release upload|gh release edit.*--notes-file' -or
+    $releaseWorkflow -notmatch 'already exists; refusing to overwrite signed assets') {
+    throw 'Published stable release assets must never be overwritten on retry.'
+}
 
 if ($releaseWorkflow -match '(?m)^\s*\$home\s*=') {
     throw 'Release workflow must not assign to PowerShell automatic HOME on Windows runners.'
