@@ -83,6 +83,15 @@ public final class TgWsProxyBootstrap {
         }
 
         Context appContext = context.getApplicationContext();
+        TgWsProxyController.registerUpdateActions(new TgWsProxyController.UpdateActions() {
+            @Override public void check(Context context) {
+                TgWsProxyBootstrap.checkForUpdates(context);
+            }
+            @Override public void openReleases(Context context) {
+                TgWsProxyBootstrap.openReleases(context);
+            }
+        });
+
 
         Thread bootstrapThread = new Thread(
                 () -> startInBackground(appContext),
