@@ -32,15 +32,29 @@ jobs:
         run: ./scripts/ci.ps1
 
   integration:
-    name: Reproduce Telegram overlay
+    name: Overlay and APK (${{ matrix.telegram }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        telegram: [pinned, telegram-13-0-3]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
+
+      - name: Select Telegram 13.0.3 regression fixture
+        if: matrix.telegram == 'telegram-13-0-3'
+        shell: pwsh
+        run: |
+          $upstream = Get-Content config/upstream.json -Raw | ConvertFrom-Json
+          $upstream.pinnedCommit = '0aae959806c57be8ad457980f2a5c6277ff18635'
+          $upstream.telegramVersion = '13.0.3'
+          $upstream.telegramBuild = 7183
+          $upstream | ConvertTo-Json -Depth 4 | Set-Content config/upstream.json
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -59,7 +73,7 @@ jobs:
 
       - name: Install Android SDK components
         shell: bash
-        run: sdkmanager "platforms;android-35" "ndk;27.2.12479018"
+        run: sdkmanager "platforms;android-35" "platforms;android-36" "ndk;27.2.12479018"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -73,3 +87,35 @@ jobs:
       - name: Re-run repository checks on prepared tree
         shell: pwsh
         run: ./scripts/ci.ps1
+
+      - name: Reject incompatible SDK anchor
+        shell: pwsh
+        run: |
+          $path = '.work/telegram/TMessagesProj/build.gradle'
+          $original = Get-Content $path -Raw
+          $pattern = '(?m)^        minSdkVersion (21|23)$'
+          $modified = [regex]::Replace($original, $pattern, '        minSdkVersion 42')
+          if ($modified -eq $original) { throw 'Test fixture could not change minSdk.' }
+          try {
+            Set-Content $path $modified -NoNewline
+            $rejected = $false
+            try {
+              ./scripts/apply-integration.ps1
+            } catch {
+              if ($_.Exception.Message -notmatch 'minSdk/targetSdk contract is unsupported') {
+                throw "Unexpected rejection: $($_.Exception.Message)"
+              }
+              $rejected = $true
+            }
+            if (-not $rejected) { throw 'Unsupported API 42 integration was accepted.' }
+          } finally {
+            Set-Content $path $original -NoNewline
+          }
+
+      - name: Compile Telegram-WSP prototype APK
+        shell: pwsh
+        env:
+          # Public Telegram upstream fallback values; compile-only CI, no release signing.
+          TELEGRAM_API_ID: '4'
+          TELEGRAM_API_HASH: '014b35b6184100b085b0d0572f9b5103'
+        run: ./scripts/build-apk.ps1 -SkipPrepare
