@@ -286,6 +286,49 @@ try {
         throw "Release APK versionCode does not match WSP revision. Expected $expectedVersionCode."
     }
 
+    # An accidental SDK downgrade in the overlay would publish a false compatibility claim.
+    $standaloneGradle = Get-Content (Join-Path $telegramPath 'TMessagesProj_AppStandalone/build.gradle') -Raw
+    $sdkMatches = [regex]::Matches($standaloneGradle, '(?m)^\s*minSdkVersion\s+(\d+)\s*
+    $badgingLines |
+        Select-String -Pattern 'package:|application-label:|application-icon' |
+        Select-Object -First 12 |
+        ForEach-Object { Write-Host $_.Line }
+
+    Write-Host 'APK signature:'
+    & $apkSigner verify --verbose --print-certs $outputPath
+    if ($LASTEXITCODE -ne 0) {
+        throw 'APK signature verification failed.'
+    }
+
+    $hash = Get-FileHash $outputPath -Algorithm SHA256
+    $apkItem = Get-Item $outputPath
+
+    Write-Host ''
+    Write-Host 'Telegram-WSP release ready.'
+    Write-Host "APK: $($apkItem.FullName)"
+    Write-Host "Size: $($apkItem.Length) bytes"
+    Write-Host "SHA256: $($hash.Hash)"
+    Write-Host "Keystore: $keystorePath"
+    Write-Host "Alias: $KeyAlias"
+    Write-Host "Release revision: $ReleaseRevision"
+    Write-Host "Android versionCode: $expectedVersionCode"
+}
+finally {
+    $password = $null
+    Remove-Item Env:TELEGRAM_WSP_KEYSTORE_PASSWORD -ErrorAction SilentlyContinue
+    Remove-Item Env:TELEGRAM_WSP_KEYSTORE -ErrorAction SilentlyContinue
+    Remove-Item Env:TELEGRAM_WSP_KEY_ALIAS -ErrorAction SilentlyContinue
+    Remove-Item Env:TELEGRAM_WSP_RELEASE_REVISION -ErrorAction SilentlyContinue
+}
+)
+    if ($sdkMatches.Count -ne 1) {
+        throw 'Ambiguous minSdkVersion in prepared standalone build.'
+    }
+    $minimumSdk = [int]$sdkMatches[0].Groups[1].Value
+    if ($badgingText -notmatch ("sdkVersion:'" + $minimumSdk + "'")) {
+        throw "Release APK SDK floor does not match upstream: expected API $minimumSdk."
+    }
+
     Write-Host 'APK metadata:'
     $badgingLines |
         Select-String -Pattern 'package:|application-label:|application-icon' |
