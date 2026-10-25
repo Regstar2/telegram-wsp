@@ -145,9 +145,9 @@ public final class TgWsProxyBootstrap {
         }
     }
 
-    private static void startInBackground(Context context) {
+    private static void startInBackground(Context appContext) {
         try {
-            TgWsProxyController.start(context);
+            TgWsProxyController.start(appContext);
         } catch (Throwable error) {
             FileLog.e("TgWsProxy bootstrap failed: " + error.getClass().getSimpleName());
         }
