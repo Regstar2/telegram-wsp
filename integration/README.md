@@ -162,6 +162,15 @@ TELEGRAM_API_HASH=<your-api-hash>
 
 `afatDebug` не используется: соответствующий library build включает `DEBUG_VERSION=true` и `DEBUG_PRIVATE_VERSION=true`.
 
+## Android updater и сетевой маршрут
+
+- `TgWsProxyBootstrap` проверяет `latest.json` и скачивает APK стандартным `HttpURLConnection` поверх HTTPS. Это обычный Android/system HTTP(S) route; он **не использует** локальный MTProto frontend `127.0.0.1:1443` как HTTP proxy.
+- Разрешены GitHub Releases и GitHub release asset CDN; прочие HTTPS redirect destinations блокируются, а SHA-256, package, signing certificate и `versionCode` повторно проверяются перед installer.
+- Если GitHub недоступен в текущей сети, ручная проверка сообщает ошибку. Пункт «Открыть релизы Telegram-WSP» переводит на официальные GitHub Releases через установленный браузер, который может использовать собственную поддерживаемую сетевую маршрутизацию. Успешность этого обходного пути зависит от среды пользователя.
+- Автоматическая проверка: интервал 12 часов после успешно проверенного feed и минимум 10 минут после попытки; ручная проверка доступна в настройках встроенного прокси. Найденный manifest хранится локально на время интервала и повторно валидируется после перезапуска процесса.
+- Для Telegram 12.10.6 принят minSdk 21, для Telegram 13.0.3 — minSdk 23. Overlay не понижает upstream SDK. Модель совместимости release проверяется по `aapt`, но upgrade и сохранность данных требуют Android device acceptance.
+- Эти проверки в `scripts/ci.ps1` защищают контракт исходников. Они не заменяют instrumented UI/network tests, подписанную release-сборку и установку поверх предыдущего release.
+
 ## Release signing
 
 Постоянный release key создаётся один раз:
