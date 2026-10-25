@@ -46,6 +46,41 @@ import io.github.regstar2.tgwsproxy.core.TgWsProxyWorkerHealthResult;
  * UI code talks only to this class. Native/JNA details stay inside tgwsproxy-core.
  */
 public final class TgWsProxyController {
+
+    // The core UI cannot depend on the standalone application's Bootstrap class.
+    public interface UpdateActions {
+        void check(Context context);
+        void openReleases(Context context);
+    }
+
+    private static volatile UpdateActions updateActions;
+
+    public static void registerUpdateActions(UpdateActions actions) {
+        updateActions = actions;
+    }
+
+    public static void checkForUpdates(Context context) {
+        UpdateActions actions = updateActions;
+        if (actions != null) {
+            actions.check(context);
+        } else {
+            new Handler(Looper.getMainLooper()).post(() ->
+                    android.widget.Toast.makeText(context, "Telegram-WSP updater is unavailable.",
+                            android.widget.Toast.LENGTH_LONG).show());
+        }
+    }
+
+    public static void openReleases(Context context) {
+        UpdateActions actions = updateActions;
+        if (actions != null) {
+            actions.openReleases(context);
+        } else {
+            new Handler(Looper.getMainLooper()).post(() ->
+                    android.widget.Toast.makeText(context, "Telegram-WSP updater is unavailable.",
+                            android.widget.Toast.LENGTH_LONG).show());
+        }
+    }
+
     public static final String ROUTE_AUTO = "auto";
     public static final String ROUTE_CF_PROXY = "cf_proxy";
     public static final String ROUTE_AWG = "awg_warp";
