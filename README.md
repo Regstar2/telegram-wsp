@@ -41,7 +41,7 @@ Telegram-WSP использует собственные название, packa
 | Компонент | Текущее состояние |
 |---|---|
 | Telegram upstream | 12.10.6, build 7112 |
-| Telegram commit | `dc780e81ed1261c369c27870e8e0999a1eb0b600` |
+| Telegram commit | `f2908b14133bbffbf7ab04f641ecb5bfaf533242` |
 | tgwsproxy-core commit | `8016d1b56210e8edc69da9d637416b70b30971a8` |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
