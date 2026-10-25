@@ -28,10 +28,10 @@ function Test-Decision {
         throw "$Name failed: $(ConvertTo-Json $result -Compress)"
     }
     if ($ExpectedReason -ne '' -and $result.reason -ne $ExpectedReason) {
-        throw "$Name: unexpected reason $($result.reason)"
+        throw "$($Name): unexpected reason $($result.reason)"
     }
     if ($result.releaseRef -ne 'regression-ref') {
-        throw "$Name: release ref was not preserved."
+        throw "$($Name): release ref was not preserved."
     }
     Write-Host "PASS: $Name"
 }
