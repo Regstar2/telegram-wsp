@@ -105,6 +105,14 @@ jobs:
         shell: pwsh
         run: ./scripts/ci.ps1
 
+      - name: Compile candidate APK before changing main
+        if: steps.upstream.outputs.changed == 'true'
+        shell: pwsh
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: ./scripts/build-apk.ps1 -SkipPrepare
+
       - name: Commit validated upstream pin
         if: steps.upstream.outputs.changed == 'true'
         id: commit
