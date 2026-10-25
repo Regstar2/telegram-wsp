@@ -20,7 +20,6 @@ import android.widget.Toast;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.TgWsProxyController;
-import org.telegram.messenger.TgWsProxyBootstrap;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -108,13 +107,13 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         addHeader(context, content, tr(context, "ОБНОВЛЕНИЯ"));
 
         TextSettingsCell checkUpdates = actionCell(context, tr(context, "Проверить обновления Telegram-WSP"));
-        checkUpdates.setOnClickListener(v -> TgWsProxyBootstrap.checkForUpdates(context));
+        checkUpdates.setOnClickListener(v -> TgWsProxyController.checkForUpdates(context));
         content.addView(checkUpdates, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
         TextSettingsCell releases = actionCell(context, tr(context, "Открыть релизы Telegram-WSP"));
-        releases.setOnClickListener(v -> TgWsProxyBootstrap.openReleases(context));
+        releases.setOnClickListener(v -> TgWsProxyController.openReleases(context));
         content.addView(releases, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
