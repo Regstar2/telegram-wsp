@@ -286,6 +286,14 @@ try {
         throw "Release APK versionCode does not match WSP revision. Expected $expectedVersionCode."
     }
 
+    # The produced APK must not silently lower the pinned Telegram SDK floor.
+    $standaloneGradle = Get-Content (Join-Path $telegramPath 'TMessagesProj_AppStandalone/build.gradle') -Raw
+    $sdkMatches = [regex]::Matches($standaloneGradle, '(?m)^[ \t]*minSdkVersion[ \t]+(\d+)[ \t]*\r?\n')
+    if ($sdkMatches.Count -ne 1) { throw 'Ambiguous standalone minSdkVersion.' }
+    $minimumSdk = [int]$sdkMatches[0].Groups[1].Value
+    if ($badgingText -notmatch ("sdkVersion:'" + $minimumSdk + "'")) {
+        throw "APK minimum SDK does not match upstream: expected API $minimumSdk."
+    }
     Write-Host 'APK metadata:'
     $badgingLines |
         Select-String -Pattern 'package:|application-label:|application-icon' |

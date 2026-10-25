@@ -105,6 +105,14 @@ jobs:
         shell: pwsh
         run: ./scripts/ci.ps1
 
+      - name: Compile candidate APK before changing main
+        if: steps.upstream.outputs.changed == 'true'
+        shell: pwsh
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: ./scripts/build-apk.ps1 -SkipPrepare
+
       - name: Commit validated upstream pin
         if: steps.upstream.outputs.changed == 'true'
         id: commit
@@ -129,54 +137,33 @@ jobs:
           REQUESTED_REVISION: ${{ inputs.revision }}
         run: |
           $config = Get-Content 'config/upstream.json' -Raw | ConvertFrom-Json
-          $requestedRevision = if ($null -eq $env:REQUESTED_REVISION) { '' } else { $env:REQUESTED_REVISION.Trim() }
-          if (-not [string]::IsNullOrWhiteSpace($requestedRevision) -and $requestedRevision -notmatch '^\d+$') {
-            throw 'revision must contain decimal digits only.'
-          }
-
-          if ([string]::IsNullOrWhiteSpace($requestedRevision)) {
-            $releaseJson = & gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft,isPrerelease
-            if ($LASTEXITCODE -ne 0) { throw 'Failed to list GitHub Releases while resolving the WSP revision.' }
-            $releaseData = (($releaseJson -join [Environment]::NewLine) | ConvertFrom-Json)
-            $knownRevisions = @(
-              foreach ($release in $releaseData) {
-                if ($release.isDraft -or $release.isPrerelease) { continue }
-                if ([string]$release.tagName -match '^v.+-wsp\.(\d+)$') {
-                  [int]$Matches[1]
-                }
-              }
-            )
-            $revision = if ($knownRevisions.Count -eq 0) {
-              '1'
-            } else {
-              [string](($knownRevisions | Measure-Object -Maximum).Maximum)
-            }
-          } else {
-            $revision = $requestedRevision
-          }
-
           $changed = '${{ steps.upstream.outputs.changed }}' -eq 'true'
           $releaseRef = if ($changed) { '${{ steps.commit.outputs.sha }}' } else { (git rev-parse HEAD).Trim() }
-          $tag = "v$($config.telegramVersion)-wsp.$revision"
+          if ($releaseRef -notmatch '^[0-9a-f]{40}$') { throw 'Invalid validated release ref.' }
 
-          & gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
-          $releaseExists = $?
+          # Include draft and prerelease tags so an occupied tag can never be overwritten.
+          $releaseJson = & gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft,isPrerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to enumerate GitHub Releases.' }
+          $releaseList = $releaseJson -join [Environment]::NewLine
           $forced = $env:FORCE_RELEASE -eq 'true'
-          $required = $forced -or ($changed -and -not $releaseExists)
+          $requested = if ($null -eq $env:REQUESTED_REVISION) { '' } else { $env:REQUESTED_REVISION.Trim() }
+          $decisionText = & ./scripts/resolve-upstream-release.ps1 `
+            -TelegramVersion ([string]$config.telegramVersion) `
+            -UpstreamChanged $changed `
+            -ForceRelease $forced `
+            -RequestedRevision $requested `
+            -ReleaseListJson $releaseList `
+            -ReleaseRef $releaseRef
+          $decision = $decisionText | ConvertFrom-Json
 
-          "release_required=$($required.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "release_ref=$releaseRef" >> $env:GITHUB_OUTPUT
-          "revision=$revision" >> $env:GITHUB_OUTPUT
+          "release_required=$($decision.releaseRequired.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "release_ref=$($decision.releaseRef)" >> $env:GITHUB_OUTPUT
+          "revision=$($decision.revision)" >> $env:GITHUB_OUTPUT
 
-          Write-Host "Tag: $tag"
-          Write-Host "Release exists: $releaseExists"
-          Write-Host "Release required: $required"
-          Write-Host "Release ref: $releaseRef"
-
-          # A missing release is expected on first publication. Do not propagate
-          # the non-zero exit code from 'gh release view' to the pwsh process.
-          exit 0
-
+          Write-Host "Release tag: $($decision.tag)"
+          Write-Host "Reason: $($decision.reason)"
+          Write-Host "Release required: $($decision.releaseRequired)"
+          Write-Host "Release ref: $($decision.releaseRef)"
   release:
     name: Publish validated Telegram-WSP update
     needs: sync

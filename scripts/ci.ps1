@@ -33,6 +33,8 @@ $required = @(
     'scripts/build-release.ps1',
     'scripts/create-release-keystore.ps1',
     'scripts/sync-upstream.ps1',
+    'scripts/resolve-upstream-release.ps1',
+    'scripts/test-upstream-release-decision.ps1',
     'scripts/package-release-source.ps1',
     'scripts/bootstrap-release-actions.ps1',
     'scripts/diagnose-xiaomi-dark-mode.ps1',
@@ -67,6 +69,8 @@ foreach ($scriptFile in $powerShellScripts) {
         throw "PowerShell syntax error in $($scriptFile.Name): $($details -join '; ')"
     }
 }
+
+& (Join-Path $root 'scripts/test-upstream-release-decision.ps1')
 
 $diagnosticScript = Get-Content (Join-Path $root 'scripts/diagnose-xiaomi-dark-mode.ps1') -Raw
 if ($diagnosticScript -match '\[string\[\]\]\$Args') {
@@ -208,6 +212,10 @@ if ($releaseWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64' -or $releaseWorkflow -n
 if ($releaseWorkflow -notmatch 'latest\.json' -or $releaseWorkflow -notmatch 'package-release-source\.ps1') {
     throw 'Release workflow must publish the update feed and Corresponding Source assets.'
 }
+if ($releaseWorkflow -match 'gh release upload|gh release edit.*--notes-file' -or
+    $releaseWorkflow -notmatch 'already exists; refusing to overwrite signed assets') {
+    throw 'Published stable release assets must never be overwritten on retry.'
+}
 
 if ($releaseWorkflow -match '(?m)^\s*\$home\s*=') {
     throw 'Release workflow must not assign to PowerShell automatic HOME on Windows runners.'
@@ -228,32 +236,25 @@ if ($upstreamWorkflow -notmatch 'schedule:' -or $upstreamWorkflow -notmatch 'syn
     throw 'Upstream workflow must check Telegram on a schedule and call the reusable release workflow.'
 }
 
-if ($upstreamWorkflow -notmatch '\$required\s*=\s*\$forced\s+-or\s+\(\$changed\s+-and\s+-not\s+\$releaseExists\)') {
-    throw 'Upstream release decision must require an upstream change unless force_release is explicit.'
-}
-if ($upstreamWorkflow -match '\$changed\s+-or\s+\$forced\s+-or\s+-not\s+\$releaseExists') {
-    throw 'Upstream release decision must not publish merely because the default revision tag is missing.'
-}
 
-if (-not $upstreamWorkflow.Contains('gh release list') -or
-    -not $upstreamWorkflow.Contains('isDraft,isPrerelease') -or
-    -not $upstreamWorkflow.Contains('Measure-Object -Maximum') -or
-    -not $upstreamWorkflow.Contains("tagName -match '^v.+-wsp\.(\d+)$'")) {
-    throw 'Upstream sync must inherit the highest stable WSP revision when no explicit revision is requested.'
+if ($upstreamWorkflow -notmatch 'resolve-upstream-release\.ps1' -or
+    $upstreamWorkflow -notmatch 'gh release list' -or
+    $upstreamWorkflow -notmatch 'isDraft,isPrerelease' -or
+    $upstreamWorkflow -notmatch 'release_required=' -or
+    $upstreamWorkflow -notmatch 'release_ref=' -or
+    $upstreamWorkflow -notmatch 'revision=') {
+    throw 'Upstream release decision must use the tested, revision-aware stable resolver.'
 }
-if (-not $upstreamWorkflow.Contains("default: ''")) {
-    throw 'Upstream sync revision override must default to empty so scheduled runs can inherit the stable WSP revision.'
+if ($upstreamWorkflow -notmatch "default: ''") {
+    throw 'Upstream sync revision override must default to empty so scheduled runs inherit stable WSP revision.'
 }
-
-if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
-    throw 'Upstream workflow must fail before changing main when release secrets are not configured.'
+if ($upstreamWorkflow -notmatch 'Validate release secrets before changing main' -or
+    $upstreamWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64') {
+    throw 'Upstream workflow must validate release secrets before committing the pin.'
 }
-
-if (-not $upstreamWorkflow.Contains('$releaseExists = $?')) {
-    throw 'Upstream release decision must capture whether the GitHub Release exists.'
-}
-if (-not $upstreamWorkflow.Contains('exit 0')) {
-    throw 'Upstream release decision must clear the expected missing-release native exit code.'
+if ($upstreamWorkflow -notmatch 'Compile candidate APK before changing main' -or
+    $upstreamWorkflow -notmatch 'build-apk\.ps1 -SkipPrepare') {
+    throw 'A changed upstream must compile before its pin is pushed to main.'
 }
 
 $releaseBootstrapScript = Get-Content (Join-Path $root 'scripts/bootstrap-release-actions.ps1') -Raw
@@ -351,6 +352,34 @@ if ($applyScript -notmatch 'appAfatStandaloneBrandingBlock') {
 
 if ($applyScript -notmatch 'TELEGRAM_WSP_RELEASE_REVISION' -or $applyScript -notmatch 'defaultConfig\.versionCode \* 1000') {
     throw 'Integration script must encode the Telegram-WSP release revision into Android versionCode.'
+}
+
+$updater = Get-Content (Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java') -Raw
+$settings = Get-Content (Join-Path $root 'integration/telegram/TgWsProxySettingsActivity.java') -Raw
+$controller = Get-Content (Join-Path $root 'integration/telegram/TgWsProxyController.java') -Raw
+if ($updater -match 'KEY_UPDATE_LAST_CHECK' -or
+    $updater -notmatch 'KEY_UPDATE_LAST_SUCCESS' -or
+    $updater -notmatch 'KEY_UPDATE_LAST_ATTEMPT' -or
+    $updater -notmatch 'UPDATE_RETRY_DELAY_MS') {
+    throw 'Update check must throttle successful checks and failed attempts separately.'
+}
+if ($updater -notmatch 'onActivityResumed' -or
+    $updater -notmatch 'KEY_UPDATE_PENDING_MANIFEST' -or
+    $settings -notmatch 'TgWsProxyController\.checkForUpdates' -or
+    $settings -notmatch 'TgWsProxyController\.openReleases' -or
+    $controller -notmatch 'registerUpdateActions' -or
+    $updater -notmatch 'TgWsProxyController\.registerUpdateActions') {
+    throw 'Updater must support foreground checks, pending offers and manual/browser actions.'
+}
+if ($updater -notmatch 'validateUpdate\(JSONObject' -or
+    $updater -notmatch 'hasSameSigningCertificate' -or
+    $updater -notmatch 'getPackageArchiveInfo' -or
+    $updater -notmatch 'version > getCurrentVersionCode' -or
+    $updater -notmatch 'release-assets\.githubusercontent\.com') {
+    throw 'Updater must validate stable metadata, new APK version and signing/redirect boundaries.'
+}
+if ($releaseWorkflow -notmatch 'minimumSdk = \$sdkVersions\[0\]') {
+    throw 'Update feed must describe the actual Telegram minimum SDK.'
 }
 
 $releaseBuildScript = Get-Content (Join-Path $root 'scripts/build-release.ps1') -Raw

@@ -142,6 +142,17 @@ jobs:
           $apkSha = (Get-FileHash $apk -Algorithm SHA256).Hash.ToLowerInvariant()
           $commit = (git rev-parse HEAD).Trim()
           $download = "https://github.com/$($env:REPOSITORY)/releases/download/$tag/Telegram-WSP-release.apk"
+          # Feed SDK is derived from the actual prepared Telegram modules.
+          $sdkVersions = @()
+          foreach ($module in @('TMessagesProj', 'TMessagesProj_AppStandalone')) {
+            $gradle = Get-Content ".work/telegram/$module/build.gradle" -Raw
+            $sdkMatches = [regex]::Matches($gradle, '(?m)^[ \t]*minSdkVersion[ \t]+(\d+)[ \t]*\r?\n')
+            if ($sdkMatches.Count -ne 1) { throw "Ambiguous minSdkVersion in $module." }
+            $sdkVersions += [int]$sdkMatches[0].Groups[1].Value
+          }
+          if ($sdkVersions[0] -ne $sdkVersions[1] -or $sdkVersions[0] -notin @(21, 23)) {
+            throw "Unsupported or inconsistent minSdkVersion: $($sdkVersions -join ', ')."
+          }
 
           $latest = [ordered]@{
             versionName = [string]$upstream.telegramVersion
@@ -155,7 +166,7 @@ jobs:
             apk = $download
             apkSha256 = $apkSha
             publishedAt = (Get-Date).ToUniversalTime().ToString('o')
-            minimumSdk = 21
+            minimumSdk = $sdkVersions[0]
             packageId = 'org.telegram.messenger.web'
           }
           [IO.File]::WriteAllText('dist/latest.json', ($latest | ConvertTo-Json -Depth 4) + [Environment]::NewLine)
@@ -215,25 +226,22 @@ jobs:
           )
           $assets += @(Get-ChildItem 'dist/source' -File | ForEach-Object { $_.FullName })
 
+          # Published tags and their signed APK/feed are immutable. A failed
+          # build may be retried only while its tag has not been published.
           gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
-          $exists = $LASTEXITCODE -eq 0
-
-          if ($exists) {
-            gh release upload $env:RELEASE_TAG @assets --clobber --repo $env:GITHUB_REPOSITORY
-            if ($LASTEXITCODE -ne 0) { throw 'gh release upload failed.' }
-            gh release edit $env:RELEASE_TAG --title $env:RELEASE_TITLE --notes-file 'dist/release-notes.md' --repo $env:GITHUB_REPOSITORY
-            if ($LASTEXITCODE -ne 0) { throw 'gh release edit failed.' }
-          } else {
-            $arguments = @('release', 'create', $env:RELEASE_TAG) + $assets + @(
-              '--title', $env:RELEASE_TITLE,
-              '--notes-file', 'dist/release-notes.md',
-              '--target', $env:RELEASE_COMMIT,
-              '--repo', $env:GITHUB_REPOSITORY
-            )
-            if ($env:PRERELEASE -eq 'true') { $arguments += '--prerelease' }
-            & gh @arguments
-            if ($LASTEXITCODE -ne 0) { throw 'gh release create failed.' }
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release $env:RELEASE_TAG already exists; refusing to overwrite signed assets."
           }
+
+          $arguments = @('release', 'create', $env:RELEASE_TAG) + $assets + @(
+            '--title', $env:RELEASE_TITLE,
+            '--notes-file', 'dist/release-notes.md',
+            '--target', $env:RELEASE_COMMIT,
+            '--repo', $env:GITHUB_REPOSITORY
+          )
+          if ($env:PRERELEASE -eq 'true') { $arguments += '--prerelease' }
+          & gh @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'gh release create failed.' }
 
       - name: Release summary
         shell: pwsh

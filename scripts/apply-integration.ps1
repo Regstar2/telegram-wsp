@@ -203,14 +203,22 @@ if ($coreBuild -notmatch [regex]::Escape('tgwsproxy-core.aar')) {
     $coreBuild = $coreBuild.Replace($coreDependencyMarker, $coreDependencyBlock)
 }
 
-$apiGradleMarker = @'
-    defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 36
-'@.TrimEnd()
+# Both confirmed Telegram baselines are supported; unknown SDK contracts fail closed.
+# Telegram 12.10.6 requires API 21, while Telegram 13.0.3 requires API 23.
+$apiGradlePattern = '(?m)^    defaultConfig \{\r?\n        minSdkVersion (21|23)\r?\n        targetSdkVersion 36'
+$coreSdkMatches = [regex]::Matches($coreBuild, $apiGradlePattern)
+$appSdkMatches = [regex]::Matches($build, $apiGradlePattern)
+if ($coreSdkMatches.Count -ne 1 -or $appSdkMatches.Count -ne 1) {
+    throw "Telegram minSdk/targetSdk contract is unsupported: core=$($coreSdkMatches.Count), standalone=$($appSdkMatches.Count)."
+}
+$minimumSdk = [int]$coreSdkMatches[0].Groups[1].Value
+if ($minimumSdk -ne [int]$appSdkMatches[0].Groups[1].Value) {
+    throw 'Telegram core/standalone minSdk versions differ.'
+}
+$apiGradleMarker = $coreSdkMatches[0].Value
 $apiGradleBlock = @'
     defaultConfig {
-        minSdkVersion 21
+        minSdkVersion __MIN_SDK__
         targetSdkVersion 36
 
         def telegramApiId = System.getenv('TELEGRAM_API_ID') ?: getProps('TELEGRAM_API_ID')
@@ -230,6 +238,7 @@ $apiGradleBlock = @'
         buildConfigField "int", "TELEGRAM_API_ID", telegramApiId
         buildConfigField "String", "TELEGRAM_API_HASH", "\"${telegramApiHash}\""
 '@.TrimEnd()
+$apiGradleBlock = $apiGradleBlock.Replace('__MIN_SDK__', [string]$minimumSdk)
 if ($coreBuild -notmatch [regex]::Escape('TELEGRAM_API_ID')) {
     $count = ([regex]::Matches($coreBuild, [regex]::Escape($apiGradleMarker))).Count
     if ($count -ne 1) { throw "Telegram API Gradle anchor count is $count; expected 1." }
