@@ -20,6 +20,7 @@ import android.widget.Toast;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.TgWsProxyController;
+import org.telegram.messenger.TgWsProxyBootstrap;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -100,6 +101,21 @@ public class TgWsProxySettingsActivity extends BaseFragment {
 
         statusCell = settingsCell(context);
         content.addView(statusCell, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        addShadow(context, content);
+        addHeader(context, content, tr(context, "ОБНОВЛЕНИЯ"));
+
+        TextSettingsCell checkUpdates = actionCell(context, tr(context, "Проверить обновления Telegram-WSP"));
+        checkUpdates.setOnClickListener(v -> TgWsProxyBootstrap.checkForUpdates(context));
+        content.addView(checkUpdates, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+
+        TextSettingsCell releases = actionCell(context, tr(context, "Открыть релизы Telegram-WSP"));
+        releases.setOnClickListener(v -> TgWsProxyBootstrap.openReleases(context));
+        content.addView(releases, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
         ));
 
@@ -768,6 +784,9 @@ public class TgWsProxySettingsActivity extends BaseFragment {
 
     private static String trEn(String key) {
         switch (key) {
+            case "ОБНОВЛЕНИЯ": return "UPDATES";
+            case "Проверить обновления Telegram-WSP": return "Check for Telegram-WSP updates";
+            case "Открыть релизы Telegram-WSP": return "Open Telegram-WSP releases";
             case "МАРШРУТИЗАЦИЯ": return "ROUTING";
             case "Мобильная сеть": return "Mobile network";
             case "AWG и Worker используются только когда настроены и доступны.": return "AWG and Worker are used only when configured and available.";
