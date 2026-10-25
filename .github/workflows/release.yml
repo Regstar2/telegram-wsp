@@ -147,7 +147,13 @@ jobs:
           $sdkVersions = @()
           foreach ($module in @('TMessagesProj', 'TMessagesProj_AppStandalone')) {
             $gradle = Get-Content ".work/telegram/$module/build.gradle" -Raw
-            $matchesSdk = [regex]::Matches($gradle, '(?m)^\s*minSdkVersion\s+(\d+)\s*
+            $matchesSdk = [regex]::Matches($gradle, '(?m)^[ \t]*minSdkVersion[ \t]+(\d+)[ \t]*\r?\n')
+            if ($matchesSdk.Count -ne 1) { throw "Ambiguous upstream minimum SDK in $module." }
+            $sdkVersions += [int]$matchesSdk[0].Groups[1].Value
+          }
+          if ($sdkVersions[0] -ne $sdkVersions[1] -or $sdkVersions[0] -notin @(21, 23)) {
+            throw "Unsupported or inconsistent minimum SDK: $($sdkVersions -join ', ')."
+          }
 
           $latest = [ordered]@{
             versionName = [string]$upstream.telegramVersion
