@@ -1,5 +1,7 @@
 package org.telegram.messenger;
 
+import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -10,6 +12,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Toast;
 
@@ -42,7 +45,8 @@ public final class TgWsProxyBootstrap {
     private static final String KEY_RUNTIME_CONFIG = "runtime_config";
     private static final String KEY_MANAGED_PROXY = "managed_proxy";
     private static final String KEY_UPDATE_ENABLED = "update_enabled";
-    private static final String KEY_UPDATE_LAST_CHECK = "update_last_check";
+    private static final String KEY_UPDATE_LAST_SUCCESS = "update_last_success";
+    private static final String KEY_UPDATE_LAST_ATTEMPT = "update_last_attempt";
     private static final String HOST = "127.0.0.1";
     private static final int PORT = 1443;
     private static final String LEGACY_RUNTIME_CONFIG = "@mtproto_worker_preconnect=1";
@@ -53,6 +57,8 @@ public final class TgWsProxyBootstrap {
     private static final String UPDATE_APK_URL_PREFIX =
             "https://github.com/Regstar2/telegram-wsp/releases/download/";
     private static final long UPDATE_CHECK_INTERVAL_MS = 12L * 60L * 60L * 1000L;
+    private static final long UPDATE_RETRY_DELAY_MS = 10L * 60L * 1000L;
+    private static final String RELEASES_URL = "https://github.com/Regstar2/telegram-wsp/releases";
     private static final int NETWORK_CONNECT_TIMEOUT_MS = 15_000;
     private static final int NETWORK_READ_TIMEOUT_MS = 30_000;
     private static final int UPDATE_METADATA_LIMIT_BYTES = 64 * 1024;
@@ -60,6 +66,9 @@ public final class TgWsProxyBootstrap {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     private static boolean initialized;
+    private static boolean checking;
+    private static UpdateInfo pendingUpdate;
+    private static long promptedVersionCode = -1L;
 
     private TgWsProxyBootstrap() {
     }
@@ -81,58 +90,179 @@ public final class TgWsProxyBootstrap {
         bootstrapThread.setDaemon(true);
         bootstrapThread.start();
 
-        Thread updateThread = new Thread(
-                () -> checkForUpdatesInBackground(appContext),
-                "TelegramWSPUpdateCheck"
-        );
-        updateThread.setDaemon(true);
-        updateThread.start();
+        if (appContext instanceof Application) {
+            ((Application) appContext).registerActivityLifecycleCallbacks(
+                new Application.ActivityLifecycleCallbacks() {
+                    @Override public void onActivityCreated(Activity a, Bundle state) {}
+                    @Override public void onActivityStarted(Activity a) {}
+                    @Override public void onActivityPaused(Activity a) {}
+                    @Override public void onActivityStopped(Activity a) {}
+                    @Override public void onActivitySaveInstanceState(Activity a, Bundle state) {}
+                    @Override public void onActivityDestroyed(Activity a) {}
+                    @Override public void onActivityResumed(Activity a) {
+                        if (a instanceof LaunchActivity) {
+                            postToMain(() -> offerPendingUpdate(a));
+                            requestUpdateCheck(appContext, false);
+                        }
+                    }
+                });
+        }
+        requestUpdateCheck(appContext, false);
     }
 
-    private static void startInBackground(Context appContext) {
+    private static void startInBackground(Context context) {
         try {
-            TgWsProxyController.start(appContext);
+            TgWsProxyController.start(context);
         } catch (Throwable error) {
             FileLog.e("TgWsProxy bootstrap failed: " + error.getClass().getSimpleName());
         }
     }
 
-    private static void checkForUpdatesInBackground(Context appContext) {
+    private static void postToMain(Runnable runnable) {
+        Handler handler = ApplicationLoader.applicationHandler;
+        (handler == null ? new Handler(Looper.getMainLooper()) : handler).post(runnable);
+    }
+
+    private static void message(Context context, String text) {
+        postToMain(() -> Toast.makeText(context, text, Toast.LENGTH_LONG).show());
+    }
+
+    public static void checkForUpdates(Context context) {
+        requestUpdateCheck(context.getApplicationContext(), true);
+    }
+
+    public static void openReleases(Context context) {
         try {
-            SharedPreferences preferences = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            if (!preferences.getBoolean(KEY_UPDATE_ENABLED, true)) {
-                return;
-            }
-
-            long now = System.currentTimeMillis();
-            long lastCheck = preferences.getLong(KEY_UPDATE_LAST_CHECK, 0L);
-            if (lastCheck > 0L && now - lastCheck < UPDATE_CHECK_INTERVAL_MS) {
-                return;
-            }
-            preferences.edit().putLong(KEY_UPDATE_LAST_CHECK, now).apply();
-
-            String metadataJson = readSmallHttpsResource(UPDATE_FEED_URL);
-            JSONObject metadata = new JSONObject(metadataJson);
-            long remoteVersionCode = metadata.getLong("versionCode");
-            long currentVersionCode = getCurrentVersionCode(appContext);
-            if (remoteVersionCode <= currentVersionCode) {
-                return;
-            }
-
-            String versionName = metadata.optString("versionName", String.valueOf(remoteVersionCode));
-            String apkUrl = metadata.getString("apk");
-            String apkSha256 = metadata.getString("apkSha256").toLowerCase(java.util.Locale.US);
-            if (!apkUrl.startsWith(UPDATE_APK_URL_PREFIX)) {
-                throw new IllegalStateException("Unexpected update APK URL: " + apkUrl);
-            }
-            if (!apkSha256.matches("[0-9a-f]{64}")) {
-                throw new IllegalStateException("Invalid update APK SHA-256");
-            }
-
-            UpdateInfo update = new UpdateInfo(remoteVersionCode, versionName, apkUrl, apkSha256);
-            offerUpdateWhenActivityReady(appContext, update, 0);
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
         } catch (Throwable error) {
-            FileLog.e("Telegram-WSP update check failed: " + error);
+            FileLog.e("Could not open Telegram-WSP releases: " + error);
+            message(context, "Could not open GitHub Releases.");
+        }
+    }
+
+    private static boolean isCoolingDown(long now, long previous, long interval) {
+        return previous > 0L && now >= previous && now - previous < interval;
+    }
+
+    private static void requestUpdateCheck(Context context, boolean manual) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (!manual && !prefs.getBoolean(KEY_UPDATE_ENABLED, true)) {
+            return;
+        }
+        synchronized (TgWsProxyBootstrap.class) {
+            if (checking) {
+                if (manual) message(context, "Telegram-WSP: update check already in progress.");
+                return;
+            }
+            long now = System.currentTimeMillis();
+            if (!manual && (isCoolingDown(now,
+                    prefs.getLong(KEY_UPDATE_LAST_SUCCESS, 0L), UPDATE_CHECK_INTERVAL_MS)
+                    || isCoolingDown(now,
+                    prefs.getLong(KEY_UPDATE_LAST_ATTEMPT, 0L), UPDATE_RETRY_DELAY_MS))) {
+                return;
+            }
+            checking = true;
+            prefs.edit().putLong(KEY_UPDATE_LAST_ATTEMPT, now).apply();
+        }
+
+        Thread thread = new Thread(() -> {
+            try {
+                JSONObject metadata = new JSONObject(readSmallHttpsResource(UPDATE_FEED_URL));
+                UpdateInfo update = validateUpdate(metadata);
+                long remoteVersionCode = update.versionCode;
+                long currentVersionCode = getCurrentVersionCode(context);
+                prefs.edit().putLong(KEY_UPDATE_LAST_SUCCESS, System.currentTimeMillis()).apply();
+                if (remoteVersionCode <= currentVersionCode) {
+                    synchronized (TgWsProxyBootstrap.class) { pendingUpdate = null; }
+                    if (manual) message(context, "Telegram-WSP is up to date.");
+                } else if (update.minimumSdk > Build.VERSION.SDK_INT) {
+                    if (manual) message(context, update.tag + " requires Android API " + update.minimumSdk);
+                } else {
+                    synchronized (TgWsProxyBootstrap.class) {
+                        pendingUpdate = update;
+                        if (manual) promptedVersionCode = -1L;
+                    }
+                    postToMain(() -> {
+                        if (LaunchActivity.instance != null) {
+                            offerPendingUpdate(LaunchActivity.instance);
+                        } else if (manual) {
+                            message(context, "Update found. Open Telegram to see the update prompt.");
+                        }
+                    });
+                }
+            } catch (Throwable error) {
+                FileLog.e("Telegram-WSP update check failed: " + error);
+                if (manual) {
+                    message(context, "Update check failed. Retry or open GitHub Releases.");
+                }
+            } finally {
+                synchronized (TgWsProxyBootstrap.class) { checking = false; }
+            }
+        }, "TelegramWSPUpdateCheck");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private static UpdateInfo validateUpdate(JSONObject metadata) throws Exception {
+        String version = metadata.getString("versionName");
+        String tag = metadata.getString("tag");
+        int revision = metadata.getInt("revision");
+        long build = metadata.getLong("telegramBuild");
+        long code = metadata.getLong("versionCode");
+        int minSdk = metadata.getInt("minimumSdk");
+        String apk = metadata.getString("apk");
+        String hash = metadata.getString("apkSha256").toLowerCase(java.util.Locale.US);
+        if (!version.matches("[0-9]+\\.[0-9]+\\.[0-9]+")
+                || revision < 1 || revision > 99
+                || !tag.equals("v" + version + "-wsp." + revision)
+                || build <= 0L || build > 2_000_000L
+                || code != build * 1000L + revision * 10L + 9L
+                || minSdk < 21 || minSdk > 100
+                || !"org.telegram.messenger.web".equals(metadata.getString("packageId"))
+                || !apk.equals(UPDATE_APK_URL_PREFIX + tag + "/Telegram-WSP-release.apk")
+                || !hash.matches("[0-9a-f]{64}")) {
+            throw new SecurityException("Invalid stable Telegram-WSP update manifest");
+        }
+        return new UpdateInfo(code, version, tag, apk, hash, minSdk);
+    }
+
+    private static void offerPendingUpdate(Activity activity) {
+        if (!(activity instanceof LaunchActivity) || activity.isFinishing()
+                || (Build.VERSION.SDK_INT >= 17 && activity.isDestroyed())) return;
+        final UpdateInfo update;
+        synchronized (TgWsProxyBootstrap.class) {
+            update = pendingUpdate;
+            if (update == null || promptedVersionCode == update.versionCode) return;
+            promptedVersionCode = update.versionCode;
+        }
+        try {
+            new AlertDialog.Builder(activity)
+                    .setTitle(LocaleController.getString(R.string.AppUpdate))
+                    .setMessage("Telegram-WSP " + update.tag
+                            + " is available. Android will request installation after APK verification.")
+                    .setPositiveButton(LocaleController.getString(R.string.AppUpdateNow),
+                            (dialog, which) -> downloadAndInstallInBackground(activity.getApplicationContext(), update))
+                    .setNeutralButton("Release notes", (dialog, which) -> openReleaseNotes(activity, update))
+                    .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
+                    .show();
+        } catch (Throwable error) {
+            synchronized (TgWsProxyBootstrap.class) {
+                if (promptedVersionCode == update.versionCode) promptedVersionCode = -1L;
+            }
+            FileLog.e("Telegram-WSP could not show update prompt: " + error);
+        }
+    }
+
+    private static void openReleaseNotes(Context context, UpdateInfo update) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL + "/tag/" + update.tag));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        } catch (Throwable error) {
+            FileLog.e("Telegram-WSP could not open release notes: " + error);
+            message(context, "Could not open release notes.");
         }
     }
 
@@ -190,55 +320,17 @@ public final class TgWsProxyBootstrap {
         return packageInfo.versionCode;
     }
 
-    private static void offerUpdateWhenActivityReady(
-            Context appContext,
-            UpdateInfo update,
-            int attempt
-    ) {
-        Handler handler = ApplicationLoader.applicationHandler;
-        if (handler == null) {
-            handler = new Handler(Looper.getMainLooper());
-        }
-
-        Handler mainHandler = handler;
-        mainHandler.postDelayed(() -> {
-            if (LaunchActivity.instance == null) {
-                if (attempt < 30) {
-                    offerUpdateWhenActivityReady(appContext, update, attempt + 1);
-                }
-                return;
-            }
-
-            try {
-                new AlertDialog.Builder(LaunchActivity.instance)
-                        .setTitle(LocaleController.getString(R.string.AppUpdate))
-                        .setMessage(
-                                "Telegram-WSP " + update.versionName
-                                        + " is available. The APK will be verified before Android asks to install it."
-                        )
-                        .setPositiveButton(
-                                LocaleController.getString(R.string.AppUpdateNow),
-                                (dialog, which) -> downloadAndInstallInBackground(appContext, update)
-                        )
-                        .setNegativeButton(LocaleController.getString(R.string.Cancel), null)
-                        .show();
-            } catch (Throwable error) {
-                FileLog.e("Telegram-WSP could not show update prompt: " + error);
-            }
-        }, attempt == 0 ? 2500L : 1000L);
-    }
-
     private static void downloadAndInstallInBackground(Context appContext, UpdateInfo update) {
-        Toast.makeText(appContext, "Telegram-WSP: downloading update...", Toast.LENGTH_SHORT).show();
+        message(appContext, "Telegram-WSP: downloading update...");
 
         Thread downloadThread = new Thread(() -> {
             try {
                 File apk = getUpdateApkFile(appContext, update.versionCode);
-                if (!isVerifiedUpdateApk(appContext, apk, update.sha256)) {
+                if (!isVerifiedUpdateApk(appContext, apk, update)) {
                     downloadUpdateApk(update.url, apk);
                 }
 
-                if (!isVerifiedUpdateApk(appContext, apk, update.sha256)) {
+                if (!isVerifiedUpdateApk(appContext, apk, update)) {
                     throw new SecurityException("Downloaded update APK did not pass verification");
                 }
 
@@ -246,7 +338,13 @@ public final class TgWsProxyBootstrap {
                 if (handler == null) {
                     handler = new Handler(Looper.getMainLooper());
                 }
-                handler.post(() -> openUpdateInstaller(appContext, apk));
+                handler.post(() -> {
+                    if (isVerifiedUpdateApk(appContext, apk, update)) {
+                        openUpdateInstaller(appContext, apk);
+                    } else {
+                        message(appContext, "Update verification failed; installation cancelled.");
+                    }
+                });
             } catch (Throwable error) {
                 FileLog.e("Telegram-WSP update download failed: " + error);
                 Handler handler = ApplicationLoader.applicationHandler;
@@ -297,7 +395,7 @@ public final class TgWsProxyBootstrap {
                 throw new IllegalStateException("Update APK HTTP status " + status);
             }
 
-            int declaredLength = connection.getContentLength();
+            long declaredLength = connection.getContentLengthLong();
             if (declaredLength > UPDATE_APK_LIMIT_BYTES) {
                 throw new IllegalStateException("Update APK exceeds size limit");
             }
@@ -317,8 +415,8 @@ public final class TgWsProxyBootstrap {
                 output.getFD().sync();
             }
 
-            if (total <= 0L) {
-                throw new IllegalStateException("Downloaded update APK is empty");
+            if (total <= 0L || (declaredLength >= 0L && total != declaredLength)) {
+                throw new IllegalStateException("Downloaded update APK is empty or truncated");
             }
 
             if (destination.exists() && !destination.delete()) {
@@ -329,25 +427,29 @@ public final class TgWsProxyBootstrap {
             }
         } finally {
             connection.disconnect();
-            if (partial.exists() && !destination.exists()) {
-                partial.delete();
-            }
+            if (partial.exists()) partial.delete();
         }
     }
 
     private static boolean isVerifiedUpdateApk(
             Context context,
             File apk,
-            String expectedSha256
+            UpdateInfo update
     ) {
         try {
             if (!apk.isFile()) {
                 return false;
             }
-            if (!expectedSha256.equalsIgnoreCase(sha256(apk))) {
+            if (apk.length() <= 0L || apk.length() > UPDATE_APK_LIMIT_BYTES
+                    || !update.sha256.equalsIgnoreCase(sha256(apk))) {
                 return false;
             }
-            return hasSameSigningCertificate(context, apk);
+            PackageInfo candidate = context.getPackageManager().getPackageArchiveInfo(apk.getAbsolutePath(), 0);
+            long version = candidate == null ? -1L
+                    : (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                        ? candidate.getLongVersionCode() : candidate.versionCode);
+            return version == update.versionCode && version > getCurrentVersionCode(context)
+                    && hasSameSigningCertificate(context, apk);
         } catch (Throwable error) {
             FileLog.e("Telegram-WSP update verification failed: " + error);
             return false;
@@ -530,14 +632,18 @@ public final class TgWsProxyBootstrap {
     private static final class UpdateInfo {
         final long versionCode;
         final String versionName;
+        final String tag;
         final String url;
         final String sha256;
+        final int minimumSdk;
 
-        UpdateInfo(long versionCode, String versionName, String url, String sha256) {
+        UpdateInfo(long versionCode, String versionName, String tag, String url, String sha256, int minimumSdk) {
             this.versionCode = versionCode;
             this.versionName = versionName;
+            this.tag = tag;
             this.url = url;
             this.sha256 = sha256;
+            this.minimumSdk = minimumSdk;
         }
     }
 }
