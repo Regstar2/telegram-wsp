@@ -355,6 +355,7 @@ if ($applyScript -notmatch 'TELEGRAM_WSP_RELEASE_REVISION' -or $applyScript -not
 
 $updater = Get-Content (Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java') -Raw
 $settings = Get-Content (Join-Path $root 'integration/telegram/TgWsProxySettingsActivity.java') -Raw
+$controller = Get-Content (Join-Path $root 'integration/telegram/TgWsProxyController.java') -Raw
 if ($updater -match 'KEY_UPDATE_LAST_CHECK' -or
     $updater -notmatch 'KEY_UPDATE_LAST_SUCCESS' -or
     $updater -notmatch 'KEY_UPDATE_LAST_ATTEMPT' -or
@@ -363,8 +364,10 @@ if ($updater -match 'KEY_UPDATE_LAST_CHECK' -or
 }
 if ($updater -notmatch 'onActivityResumed' -or
     $updater -notmatch 'KEY_UPDATE_PENDING_MANIFEST' -or
-    $settings -notmatch 'TgWsProxyBootstrap\.checkForUpdates' -or
-    $settings -notmatch 'TgWsProxyBootstrap\.openReleases') {
+    $settings -notmatch 'TgWsProxyController\.checkForUpdates' -or
+    $settings -notmatch 'TgWsProxyController\.openReleases' -or
+    $controller -notmatch 'registerUpdateActions' -or
+    $updater -notmatch 'TgWsProxyController\.registerUpdateActions') {
     throw 'Updater must support foreground checks, pending offers and manual/browser actions.'
 }
 if ($updater -notmatch 'validateUpdate\(JSONObject' -or
