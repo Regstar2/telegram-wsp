@@ -221,6 +221,7 @@ public final class TgWsProxyBootstrap {
                     synchronized (TgWsProxyBootstrap.class) { pendingUpdate = null; }
                     if (manual) message(context, "Telegram-WSP is up to date.");
                 } else if (update.minimumSdk > Build.VERSION.SDK_INT) {
+                    synchronized (TgWsProxyBootstrap.class) { pendingUpdate = null; }
                     if (manual) message(context, update.tag + " requires Android API " + update.minimumSdk);
                 } else {
                     synchronized (TgWsProxyBootstrap.class) {
