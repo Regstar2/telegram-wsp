@@ -47,6 +47,7 @@ public final class TgWsProxyBootstrap {
     private static final String KEY_UPDATE_ENABLED = "update_enabled";
     private static final String KEY_UPDATE_LAST_SUCCESS = "update_last_success";
     private static final String KEY_UPDATE_LAST_ATTEMPT = "update_last_attempt";
+    private static final String KEY_UPDATE_PENDING_MANIFEST = "update_pending_manifest";
     private static final String HOST = "127.0.0.1";
     private static final int PORT = 1443;
     private static final String LEGACY_RUNTIME_CONFIG = "@mtproto_worker_preconnect=1";
@@ -107,7 +108,32 @@ public final class TgWsProxyBootstrap {
                     }
                 });
         }
+        restorePendingUpdate(appContext);
         requestUpdateCheck(appContext, false);
+    }
+
+    private static void restorePendingUpdate(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        long now = System.currentTimeMillis();
+        if (!isCoolingDown(now, prefs.getLong(KEY_UPDATE_LAST_SUCCESS, 0L),
+                UPDATE_CHECK_INTERVAL_MS)) {
+            prefs.edit().remove(KEY_UPDATE_PENDING_MANIFEST).apply();
+            return;
+        }
+        String saved = prefs.getString(KEY_UPDATE_PENDING_MANIFEST, null);
+        if (saved == null) return;
+        try {
+            UpdateInfo update = validateUpdate(new JSONObject(saved));
+            if (update.versionCode > getCurrentVersionCode(context)
+                    && update.minimumSdk <= Build.VERSION.SDK_INT) {
+                synchronized (TgWsProxyBootstrap.class) { pendingUpdate = update; }
+            } else {
+                prefs.edit().remove(KEY_UPDATE_PENDING_MANIFEST).apply();
+            }
+        } catch (Throwable error) {
+            prefs.edit().remove(KEY_UPDATE_PENDING_MANIFEST).apply();
+            FileLog.e("Telegram-WSP saved update manifest invalid: " + error);
+        }
     }
 
     private static void startInBackground(Context context) {
@@ -173,7 +199,15 @@ public final class TgWsProxyBootstrap {
                 UpdateInfo update = validateUpdate(metadata);
                 long remoteVersionCode = update.versionCode;
                 long currentVersionCode = getCurrentVersionCode(context);
-                prefs.edit().putLong(KEY_UPDATE_LAST_SUCCESS, System.currentTimeMillis()).apply();
+                SharedPreferences.Editor success = prefs.edit()
+                        .putLong(KEY_UPDATE_LAST_SUCCESS, System.currentTimeMillis());
+                if (remoteVersionCode > currentVersionCode
+                        && update.minimumSdk <= Build.VERSION.SDK_INT) {
+                    success.putString(KEY_UPDATE_PENDING_MANIFEST, metadata.toString());
+                } else {
+                    success.remove(KEY_UPDATE_PENDING_MANIFEST);
+                }
+                success.apply();
                 if (remoteVersionCode <= currentVersionCode) {
                     synchronized (TgWsProxyBootstrap.class) { pendingUpdate = null; }
                     if (manual) message(context, "Telegram-WSP is up to date.");
@@ -416,7 +450,7 @@ public final class TgWsProxyBootstrap {
                 throw new IllegalStateException("Update APK HTTP status " + status);
             }
 
-            long declaredLength = connection.getContentLengthLong();
+            long declaredLength = connection.getContentLength();
             if (declaredLength > UPDATE_APK_LIMIT_BYTES) {
                 throw new IllegalStateException("Update APK exceeds size limit");
             }
