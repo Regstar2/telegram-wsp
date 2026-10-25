@@ -288,7 +288,16 @@ try {
 
     # An accidental SDK downgrade in the overlay would publish a false compatibility claim.
     $standaloneGradle = Get-Content (Join-Path $telegramPath 'TMessagesProj_AppStandalone/build.gradle') -Raw
-    $sdkMatches = [regex]::Matches($standaloneGradle, '(?m)^\s*minSdkVersion\s+(\d+)\s*
+    $sdkMatches = [regex]::Matches($standaloneGradle, '(?m)^[ \t]*minSdkVersion[ \t]+(\d+)[ \t]*\r?\n')
+    if ($sdkMatches.Count -ne 1) {
+        throw 'Ambiguous minSdkVersion in prepared standalone build.'
+    }
+    $minimumSdk = [int]$sdkMatches[0].Groups[1].Value
+    if ($badgingText -notmatch ("sdkVersion:'" + $minimumSdk + "'")) {
+        throw "Release APK SDK floor does not match upstream: expected API $minimumSdk."
+    }
+
+    Write-Host 'APK metadata:'
     $badgingLines |
         Select-String -Pattern 'package:|application-label:|application-icon' |
         Select-Object -First 12 |
