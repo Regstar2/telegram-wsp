@@ -294,19 +294,40 @@ public final class TgWsProxyBootstrap {
     }
 
     private static HttpURLConnection openHttpsConnection(String url) throws Exception {
-        URL parsed = new URL(url);
-        if (!"https".equalsIgnoreCase(parsed.getProtocol())) {
-            throw new IllegalArgumentException("Only HTTPS update URLs are allowed");
+        URL current = new URL(url);
+        // Only GitHub release paths and GitHub's release asset CDN can serve updater bytes.
+        for (int redirects = 0; redirects <= 5; redirects++) {
+            if (!"https".equalsIgnoreCase(current.getProtocol())
+                    || current.getUserInfo() != null
+                    || (current.getPort() != -1 && current.getPort() != 443)) {
+                throw new SecurityException("Update URL must use HTTPS on port 443");
+            }
+            String host = current.getHost().toLowerCase(java.util.Locale.US);
+            if (!(("github.com".equals(host)
+                    && current.getPath().startsWith("/Regstar2/telegram-wsp/releases/"))
+                    || "release-assets.githubusercontent.com".equals(host))) {
+                throw new SecurityException("Update redirect leads to an untrusted host/path");
+            }
+            HttpURLConnection connection = (HttpURLConnection) current.openConnection();
+            connection.setInstanceFollowRedirects(false);
+            connection.setConnectTimeout(NETWORK_CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(NETWORK_READ_TIMEOUT_MS);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("User-Agent", "Telegram-WSP Android Updater");
+            int response = connection.getResponseCode();
+            if (response != 301 && response != 302 && response != 303
+                    && response != 307 && response != 308) {
+                return connection;
+            }
+            String location = connection.getHeaderField("Location");
+            connection.disconnect();
+            if (location == null || location.isEmpty()) {
+                throw new SecurityException("Update redirect has no Location");
+            }
+            current = new URL(current, location);
         }
-
-        HttpURLConnection connection = (HttpURLConnection) parsed.openConnection();
-        connection.setInstanceFollowRedirects(true);
-        connection.setConnectTimeout(NETWORK_CONNECT_TIMEOUT_MS);
-        connection.setReadTimeout(NETWORK_READ_TIMEOUT_MS);
-        connection.setUseCaches(false);
-        connection.setRequestProperty("Cache-Control", "no-cache");
-        connection.setRequestProperty("User-Agent", "Telegram-WSP Android Updater");
-        return connection;
+        throw new SecurityException("Too many update redirects");
     }
 
     private static long getCurrentVersionCode(Context context) throws Exception {
