@@ -353,6 +353,31 @@ if ($applyScript -notmatch 'TELEGRAM_WSP_RELEASE_REVISION' -or $applyScript -not
     throw 'Integration script must encode the Telegram-WSP release revision into Android versionCode.'
 }
 
+$updater = Get-Content (Join-Path $root 'integration/telegram/TgWsProxyBootstrap.java') -Raw
+$settings = Get-Content (Join-Path $root 'integration/telegram/TgWsProxySettingsActivity.java') -Raw
+if ($updater -match 'KEY_UPDATE_LAST_CHECK' -or
+    $updater -notmatch 'KEY_UPDATE_LAST_SUCCESS' -or
+    $updater -notmatch 'KEY_UPDATE_LAST_ATTEMPT' -or
+    $updater -notmatch 'UPDATE_RETRY_DELAY_MS') {
+    throw 'Update check must throttle successful checks and failed attempts separately.'
+}
+if ($updater -notmatch 'onActivityResumed' -or
+    $updater -notmatch 'KEY_UPDATE_PENDING_MANIFEST' -or
+    $settings -notmatch 'TgWsProxyBootstrap\.checkForUpdates' -or
+    $settings -notmatch 'TgWsProxyBootstrap\.openReleases') {
+    throw 'Updater must support foreground checks, pending offers and manual/browser actions.'
+}
+if ($updater -notmatch 'validateUpdate\(JSONObject' -or
+    $updater -notmatch 'hasSameSigningCertificate' -or
+    $updater -notmatch 'getPackageArchiveInfo' -or
+    $updater -notmatch 'version > getCurrentVersionCode' -or
+    $updater -notmatch 'release-assets\.githubusercontent\.com') {
+    throw 'Updater must validate stable metadata, new APK version and signing/redirect boundaries.'
+}
+if ($releaseWorkflow -notmatch 'minimumSdk = \$sdkVersions\[0\]') {
+    throw 'Update feed must describe the actual Telegram minimum SDK.'
+}
+
 $releaseBuildScript = Get-Content (Join-Path $root 'scripts/build-release.ps1') -Raw
 if ($releaseBuildScript -notmatch 'build-apk\.ps1' -or $releaseBuildScript -notmatch 'Full\s*=\s*\$true') {
     throw 'Release build script must delegate to the full afatStandalone build.'
