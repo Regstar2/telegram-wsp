@@ -193,6 +193,24 @@ jobs:
 
           The APK is signed with the persistent Telegram-WSP release key. Exact source components used to reproduce this build are attached to the release.
           "@
+          $releaseNotesPath = "docs/releases/$tag.md"
+          $releaseNotesEnPath = "docs/releases/${tag}_EN.md"
+          if ((Test-Path -LiteralPath $releaseNotesPath) -and (Test-Path -LiteralPath $releaseNotesEnPath)) {
+            $notes = @"
+          # Telegram-WSP $($upstream.telegramVersion) (WSP $($env:RELEASE_REVISION))
+
+          Обновлено встроенное ядро прокси и обработка маршрутов Cloudflare Proxy, Worker и MTProto.
+
+          [Полное описание на русском](https://github.com/$env:REPOSITORY/blob/$tag/$releaseNotesPath) · [Full release notes in English](https://github.com/$env:REPOSITORY/blob/$tag/$releaseNotesEnPath)
+
+          - tgwsproxy-core commit: $($core.pinnedCommit)
+          - Telegram upstream: $($upstream.telegramVersion) ($($upstream.telegramBuild))
+          - APK SHA-256: $apkSha
+
+          Signed APK, checksum manifest and exact Corresponding Source are attached.
+          "@
+          }
+
           [IO.File]::WriteAllText('dist/release-notes.md', $notes.Trim() + [Environment]::NewLine)
 
           $checksumFiles = @(

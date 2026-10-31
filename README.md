@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/Regstar2/telegram-wsp?display_name=tag&sort=semver&style=for-the-badge&logo=github&label=release)](../../releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Regstar2/telegram-wsp/trusted-ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI)](../../actions/workflows/trusted-ci.yml)
-[![Platform](https://img.shields.io/badge/platform-Android%205.0%2B-0A7EA4?style=for-the-badge)](#требования)
+[![Platform](https://img.shields.io/badge/platform-Android%206.0%2B-0A7EA4?style=for-the-badge)](#требования)
 [![License](https://img.shields.io/github/license/Regstar2/telegram-wsp?style=for-the-badge&label=license)](LICENSE)
 
 [Быстрый старт](#быстрый-старт) ·
@@ -36,12 +36,12 @@ Telegram-WSP использует собственные название, packa
 
 Стадия: **MVP**.
 
-Текущий публичный релиз: **[v12.10.6-wsp.2](../../releases/tag/v12.10.6-wsp.2)**.
+Текущий публичный релиз: **[v13.1.1-wsp.2](../../releases/tag/v13.1.1-wsp.2)**.
 
 | Компонент | Текущее состояние |
 |---|---|
-| Telegram upstream | 12.10.6, build 7112 |
-| Telegram commit | `f2908b14133bbffbf7ab04f641ecb5bfaf533242` |
+| Telegram upstream | 13.1.1, build 7237 |
+| Telegram commit | `3de37c8cfb039452be7398909461da6288babf15` |
 | tgwsproxy-core commit | `8016d1b56210e8edc69da9d637416b70b30971a8` |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
@@ -50,7 +50,7 @@ Telegram-WSP использует собственные название, packa
 | Автообновление приложения | Реализовано через GitHub Releases |
 | Upstream sync | Автоматическая проверка DrKLO/Telegram с integration gates |
 
-Релиз `v12.10.6-wsp.2` включает новый экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
+Релиз `v13.1.1-wsp.2` включает встроенный экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
 
 ## Возможности
 
@@ -83,7 +83,7 @@ Telegram-WSP использует собственные название, packa
 
 Для готового APK:
 
-- Для последней опубликованной сборки Telegram 12.10.6: Android **5.0 / API 21** или новее. Telegram upstream 13.0.3 требует **Android 6.0 / API 23**; будущие релизы на его основе не должны заявлять поддержку Android 5.0;
+- Для текущей Telegram 13.1.1: Android **6.0 / API 23** или новее (итоговый minimumSdk также публикуется в `latest.json`);
 - доступ в интернет;
 - разрешение Android на установку APK не из магазина.
 
