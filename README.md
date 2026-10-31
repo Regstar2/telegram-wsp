@@ -42,7 +42,7 @@ Telegram-WSP использует собственные название, packa
 |---|---|
 | Telegram upstream | 13.1.1, build 7237 |
 | Telegram commit | `3de37c8cfb039452be7398909461da6288babf15` |
-| tgwsproxy-core commit | `cdcb11352aad91c9cbc0fd1d49a0c0b08c56f8cf` |
+| tgwsproxy-core commit | `515fc50af9797c69722f14409dedcaf96868d9ce` |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
 | Экран управления прокси | Встроен в настройки прокси Telegram |

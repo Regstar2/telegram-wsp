@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/Regstar2/tgwsproxy-core.git",
-  "pinnedCommit": "cdcb11352aad91c9cbc0fd1d49a0c0b08c56f8cf",
+  "pinnedCommit": "515fc50af9797c69722f14409dedcaf96868d9ce",
   "artifact": "core/build/outputs/aar/core-release.aar",
   "androidMinSdk": 21,
   "abi": "arm64-v8a"
