@@ -42,7 +42,7 @@ Telegram-WSP использует собственные название, packa
 |---|---|
 | Telegram upstream | 13.1.1, build 7237 |
 | Telegram commit | `3de37c8cfb039452be7398909461da6288babf15` |
-| tgwsproxy-core commit | `8016d1b56210e8edc69da9d637416b70b30971a8` |
+| tgwsproxy-core commit | `cdcb11352aad91c9cbc0fd1d49a0c0b08c56f8cf` |
 | Android package | `org.telegram.messenger.web` |
 | Встроенный TgWsProxy | Работает через локальный listener |
 | Экран управления прокси | Встроен в настройки прокси Telegram |
@@ -50,7 +50,7 @@ Telegram-WSP использует собственные название, packa
 | Автообновление приложения | Реализовано через GitHub Releases |
 | Upstream sync | Автоматическая проверка DrKLO/Telegram с integration gates |
 
-Релиз `v13.1.1-wsp.2` включает встроенный экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
+Релиз `v13.1.1-wsp.2` включает встроенный экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Следующая ревизия `v13.1.1-wsp.3` обновляет native runtime: обработку исчерпания CF domain pool, отмену устаревших MTProto-соединений, TLS и Worker transport. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
 
 ## Возможности
 
