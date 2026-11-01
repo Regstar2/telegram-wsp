@@ -66,17 +66,9 @@ Core не должен:
 
 ## 4. Startup hook
 
-Предпочтительный Prototype-вариант — один небольшой hook в application layer Telegram, например в app-specific `ApplicationLoaderImpl`, плюс подключение зависимости в Gradle.
+Текущая интеграция добавляет startup hook в `TMessagesProj_AppStandalone/src/main/java/org/telegram/messenger/ApplicationLoaderImpl.java`. Он вызывает `TgWsProxyBootstrap`, который инициализирует `TgWsProxyController` и локальный core. UI подключён через `ProxyListActivity` и `TgWsProxySettingsActivity`.
 
-Целевой budget:
-
-```text
-1 файл build configuration
-1 startup hook
-0 изменений tgnet
-```
-
-Дополнительные upstream-файлы допускаются только при доказанной необходимости.
+Изменяемые Telegram source-level пути перечислены в разделе 10. Лимит — **8 путей**; `TMessagesProj/jni/tgnet/` не изменяется.
 
 ## 5. Proxy path
 
@@ -115,16 +107,20 @@ apply patches/overlay
 build + smoke
 ```
 
-После рабочего Prototype можно автоматизировать проверку нового `master`: workflow обновляет pin в отдельной ветке/PR, применяет overlay и запускает CI. Автоматический merge/release не является частью первого Prototype.
+Текущий [upstream-sync.yml](../.github/workflows/upstream-sync.yml) запускается ежедневно. Если найден новый Telegram build/commit, workflow обновляет pin, воспроизводит overlay, выполняет `scripts/ci.ps1` и компилирует prototype APK **до** фиксации нового pin в `main`. При успешной проверке workflow публикует pin и передаёт commit в [release.yml](../.github/workflows/release.yml), где отдельно собирается и публикуется подписанный APK с Corresponding Source. Если сборка публикации сорвалась после фиксации pin, следующий scheduled run может повторить выпуск. Релизы с уже существующим tag не перезаписываются.
+
+Проверка нового upstream не означает автоматического подтверждения работы всех сетевых маршрутов на реальном устройстве.
 
 ## 8. Diff budget
 
-После появления первого рабочего APK CI должен проверять:
+Integration CI проверяет:
 
 - отсутствие изменений `TMessagesProj/jni/tgnet/`;
-- количество изменённых upstream-файлов;
-- успешное применение patch/overlay без fuzzy/manual resolution;
-- сборку Telegram на pinned upstream.
+- лимит в 8 изменённых upstream source-level путей;
+- точное применение overlay с отказом при несовместимом SDK anchor;
+- повторяемость интеграции и prototype APK на pinned upstream и Telegram 13.0.3 regression fixture.
+
+Подписанная release-сборка и установка на устройство — отдельные проверки.
 
 Текущий budget — не более 8 source-level upstream-путей.
 
@@ -145,9 +141,9 @@ build + smoke
 исходного кода не является допустимым release input.
 
 
-## 10. Реализованный Prototype overlay
+## 10. Текущий overlay
 
-Текущий integration layer использует pinned `tgwsproxy-core` и формирует 8 source-level изменений:
+Для Telegram 13.1.1 (7237) используется `tgwsproxy-core` из [`config/core.json`](../config/core.json). Integration layer формирует 8 source-level изменений:
 
 ```text
 TMessagesProj/build.gradle
@@ -178,3 +174,9 @@ Controller:
 
 Overlay применяется `scripts/apply-integration.ps1` через точные anchor-замены.
 Если upstream изменит anchor, процесс завершается ошибкой вместо fuzzy merge.
+
+### Надёжность runtime в WSP 3
+
+В `v13.1.1-wsp.3` обновлён pinned core без изменения границы Telegram/core. В runtime добавлена обработка полного исчерпания Cloudflare domain pool (включая per-DC cooldown/in-flight reservation), отмена устаревших dial/TLS-операций при смене route policy и корректная привязка событий к поколению маршрута. Изменения TLS/WebSocket и Worker transport/failover относятся к core, а не к `tgnet`.
+
+Это описание поведения кода и релиза, **не доказательство** доступности соответствующих endpoint в любой сети. См. [release notes](releases/v13.1.1-wsp.3.md).

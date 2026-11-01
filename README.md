@@ -36,7 +36,7 @@ Telegram-WSP использует собственные название, packa
 
 Стадия: **MVP**.
 
-Текущий публичный релиз: **[v13.1.1-wsp.2](../../releases/tag/v13.1.1-wsp.2)**.
+Текущий публичный релиз: **[v13.1.1-wsp.3](../../releases/tag/v13.1.1-wsp.3)** (31 октября 2026 года).
 
 | Компонент | Текущее состояние |
 |---|---|
@@ -50,7 +50,7 @@ Telegram-WSP использует собственные название, packa
 | Автообновление приложения | Реализовано через GitHub Releases |
 | Upstream sync | Автоматическая проверка DrKLO/Telegram с integration gates |
 
-Релиз `v13.1.1-wsp.2` включает встроенный экран управления маршрутами, поддержку Cloudflare-доменов, WARP/AmneziaWG-профиля и Worker pools. Следующая ревизия `v13.1.1-wsp.3` обновляет native runtime: обработку исчерпания CF domain pool, отмену устаревших MTProto-соединений, TLS и Worker transport. Production APK публикуется вместе с контрольными суммами и точными исходными компонентами сборки.
+Релиз `v13.1.1-wsp.3` сохраняет экран управления маршрутами, Cloudflare-домены, WARP/AmneziaWG-профиль и Worker pools. В этой ревизии обновлены обработка полного исчерпания CF domain pool, отмена устаревших попыток CF dial/TLS при смене маршрута, обработка ошибок WebSocket/TLS и Worker transport/failover. Версия Telegram upstream остаётся 13.1.1 (7237). Подписанный APK, контрольные суммы и точные исходные компоненты доступны в [релизе](../../releases/tag/v13.1.1-wsp.3). Подробности: [на русском](docs/releases/v13.1.1-wsp.3.md) и [на английском](docs/releases/v13.1.1-wsp.3_EN.md).
 
 ## Возможности
 
@@ -101,7 +101,7 @@ org.telegram.messenger.web
 
 Telegram-WSP использует постоянный release key. Новая версия устанавливается поверх предыдущей Telegram-WSP-сборки только при совпадении package ID и сертификата подписи.
 
-Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит обновить его поверх существующей установки.
+Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит обновить его поверх существующей установки. Для перехода с `v13.1.1-wsp.2` на `v13.1.1-wsp.3` удалять приложение не требуется при совпадении подписи. Не удаляйте установленный клиент ради исправления ошибки подписи без сохранения важных локальных данных.
 
 ## Использование
 
@@ -254,7 +254,7 @@ Workflow запускается по расписанию без участия 
 git clone https://github.com/Regstar2/telegram-wsp.git
 cd telegram-wsp
 
-./scripts/prepare-integration.ps1 -Force
+./scripts/prepare-integration.ps1
 ./scripts/ci.ps1
 ```
 
@@ -314,8 +314,11 @@ Production releases собираются на GitHub-hosted Windows runner че�
 Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 
 - выполняет repository checks;
-- воспроизводит Telegram overlay с чистого pinned upstream;
-- повторно запускает проверки на подготовленном worktree.
+- воспроизводит Telegram overlay на pinned Telegram 13.1.1 и регрессионном fixture 13.0.3;
+- повторно запускает проверки на подготовленном worktree и проверяет отказ при несовместимом SDK anchor;
+- компилирует prototype APK без release-подписи.
+
+Успешный CI не доказывает доступность маршрутов Cloudflare Proxy, AWG и Worker в реальной сети. Подписанный production APK отдельно собирается в [release.yml](.github/workflows/release.yml).
 
 Перед публичным релизом production workflow дополнительно выполняет подписанную сборку и проверяет package, branding и APK signature.
 
@@ -323,11 +326,22 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 
 - [Архитектура](docs/architecture.md) — границы Telegram/core и модель минимального diff;
 - [Integration layer](integration/README.md) — startup path, credentials, branding и build variants;
-- [MVP scope](docs/product/mvp-scope.md) — границы текущей стадии проекта;
+- [Исходный MVP scope](docs/product/mvp-scope.md) — исторический план первого прототипа, не перечень всех текущих возможностей;
+- [Релиз WSP 3 (RU)](docs/releases/v13.1.1-wsp.3.md) · [Release notes (EN)](docs/releases/v13.1.1-wsp.3_EN.md) — изменения актуального релиза;
 - [Лицензирование](docs/licensing.md) — GPL-модель, third-party компоненты и Corresponding Source;
 - [NOTICE.md](NOTICE.md) — third-party notices.
 
 Точные исходные компоненты каждой публичной сборки прикладываются к GitHub Release вместе с `SOURCE_MANIFEST.json` и `SHA256SUMS.txt`.
+
+## Если возникла проблема
+
+**APK не устанавливается.** Проверьте Android 6.0+ для текущего релиза и наличие уже установленного `org.telegram.messenger.web` с другой подписью. В последнем случае Android не сможет установить обновление поверх него. Сверьте APK и метаданные с [официальным релизом](../../releases/latest); не удаляйте приложение без учёта возможной потери локальных данных.
+
+**Нет соединения через Cloudflare Proxy.** В настройках «Встроенный прокси» проверьте список доменов и результат их проверки. WSP 3 обрабатывает исчерпание доступного пула, но это не гарантирует наличия рабочего домена в конкретной сети. При необходимости проверьте другой **настроенный** маршрут (AWG или Worker). В мобильном Auto-режиме Direct отсутствует.
+
+**Не удаётся проверить обновления.** Updater запрашивает GitHub Releases по обычному HTTPS, а не через локальный MTProto proxy. Откройте «Открыть релизы Telegram-WSP» и попробуйте загрузить APK в браузере, если он доступен через другое соединение. Установка всё равно требует подтверждения Android.
+
+Для ошибки маршрутизации полезно приложить к Issue версию WSP, тип сети (Wi-Fi/мобильная), выбранный маршрут и воспроизводимые действия. Не публикуйте секреты, ключи AWG и приватные конфигурации.
 
 ## Обратная связь
 
