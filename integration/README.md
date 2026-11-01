@@ -168,8 +168,14 @@ TELEGRAM_API_HASH=<your-api-hash>
 - Разрешены GitHub Releases и GitHub release asset CDN; прочие HTTPS redirect destinations блокируются, а SHA-256, package, signing certificate и `versionCode` повторно проверяются перед installer.
 - Если GitHub недоступен в текущей сети, ручная проверка сообщает ошибку. Пункт «Открыть релизы Telegram-WSP» переводит на официальные GitHub Releases через установленный браузер, который может использовать собственную поддерживаемую сетевую маршрутизацию. Успешность этого обходного пути зависит от среды пользователя.
 - Автоматическая проверка: интервал 12 часов после успешно проверенного feed и минимум 10 минут после попытки; ручная проверка доступна в настройках встроенного прокси. Найденный manifest хранится локально на время интервала и повторно валидируется после перезапуска процесса.
-- Для Telegram 12.10.6 принят minSdk 21, для Telegram 13.0.3 — minSdk 23. Overlay не понижает upstream SDK. Модель совместимости release проверяется по `aapt`, но upgrade и сохранность данных требуют Android device acceptance.
+- Текущий pin Telegram 13.1.1 требует minSdk 23 (Android 6.0+). Telegram 13.0.3 (minSdk 23) остаётся регрессионным CI-fixture; Telegram 12.10.6 (minSdk 21) — предыдущий проверенный вариант. Overlay не понижает upstream SDK. Модель совместимости release проверяется через `aapt`, но upgrade и сохранность данных требуют Android device acceptance.
 - Эти проверки в `scripts/ci.ps1` защищают контракт исходников. Они не заменяют instrumented UI/network tests, подписанную release-сборку и установку поверх предыдущего release.
+
+## Надёжность маршрутов в WSP 3
+
+`v13.1.1-wsp.3` использует обновлённый pinned `tgwsproxy-core` из `config/core.json`. Исправления касаются обработки исчерпания CF domain pool, отмены устаревших CF dial/TLS после остановки/переключения маршрута, телеметрии MTProto route generation и TLS/Worker transport/failover. Telegram-specific adapter сохраняет порядок Auto на Wi-Fi и mobile и не добавляет Direct в мобильную Auto-цепочку.
+
+Результаты `trusted-ci.yml` подтверждают воспроизводимость overlay и компиляцию, но сами по себе не подтверждают доступность CF, AWG или Worker в сети пользователя. Подробности изменений — в [release notes WSP 3](../docs/releases/v13.1.1-wsp.3.md).
 
 ## Release signing
 
