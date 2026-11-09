@@ -224,9 +224,21 @@ try {
     }
     Push-Location $telegram
     try {
-        & $java.Source -classpath $gradleWrapperJar org.gradle.wrapper.GradleWrapperMain --stop | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Telegram Gradle wrapper --stop failed with exit code $LASTEXITCODE."
+        # The wrapper may need to download Telegram's pinned Gradle distribution
+        # on a fresh runner. A transient network timeout must not abort the release.
+        $maxStopAttempts = 3
+        for ($attempt = 1; $attempt -le $maxStopAttempts; $attempt++) {
+            & $java.Source -classpath $gradleWrapperJar org.gradle.wrapper.GradleWrapperMain --stop | Out-Null
+            $stopExitCode = $LASTEXITCODE
+            if ($stopExitCode -eq 0) {
+                break
+            }
+            if ($attempt -eq $maxStopAttempts) {
+                throw "Telegram Gradle wrapper --stop failed with exit code $stopExitCode after $maxStopAttempts attempts."
+            }
+            $delaySeconds = 10 * $attempt
+            Write-Warning "Telegram Gradle wrapper --stop failed (exit code $stopExitCode, attempt $attempt/$maxStopAttempts). Retrying in $delaySeconds seconds."
+            Start-Sleep -Seconds $delaySeconds
         }
     }
     finally {

@@ -156,6 +156,15 @@ if ($buildApkScript -notmatch 'themeBytes -contains \[byte\]13') {
     throw 'scripts/build-apk.ps1 must reject packaged Telegram theme assets containing CR bytes.'
 }
 
+$releaseBuildScript = Get-Content (Join-Path $root 'scripts/build-release.ps1') -Raw
+if ($releaseBuildScript -notmatch 'GradleWrapperMain --stop' -or
+    $releaseBuildScript -notmatch '\$maxStopAttempts\s*=\s*3' -or
+    $releaseBuildScript -notmatch '\$stopExitCode\s*=\s*\$LASTEXITCODE' -or
+    $releaseBuildScript -notmatch '\$attempt -eq \$maxStopAttempts' -or
+    $releaseBuildScript -notmatch 'Start-Sleep -Seconds \$delaySeconds') {
+    throw 'Release build must retry transient pinned Telegram Gradle wrapper bootstrap failures and fail after bounded attempts.'
+}
+
 $buildCoreScript = Get-Content (Join-Path $root 'scripts/build-core.ps1') -Raw
 if ($buildCoreScript -notmatch 'TGWSP_CORE_GRADLE') {
     throw 'Core build script must support a dedicated Gradle 8.2.1 executable for release CI.'
