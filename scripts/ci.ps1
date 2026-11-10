@@ -35,6 +35,8 @@ $required = @(
     'scripts/sync-upstream.ps1',
     'scripts/resolve-upstream-release.ps1',
     'scripts/test-upstream-release-decision.ps1',
+    'scripts/write-release-notes.ps1',
+    'scripts/test-release-notes.ps1',
     'scripts/package-release-source.ps1',
     'scripts/bootstrap-release-actions.ps1',
     'scripts/diagnose-xiaomi-dark-mode.ps1',
@@ -71,6 +73,7 @@ foreach ($scriptFile in $powerShellScripts) {
 }
 
 & (Join-Path $root 'scripts/test-upstream-release-decision.ps1')
+& (Join-Path $root 'scripts/test-release-notes.ps1')
 
 $diagnosticScript = Get-Content (Join-Path $root 'scripts/diagnose-xiaomi-dark-mode.ps1') -Raw
 if ($diagnosticScript -match '\[string\[\]\]\$Args') {

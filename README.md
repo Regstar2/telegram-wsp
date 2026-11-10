@@ -303,6 +303,8 @@ dist/Telegram-WSP-release.apk
 
 Production releases собираются на GitHub-hosted Windows runner через [release.yml](.github/workflows/release.yml).
 
+Release notes автоматически сравнивают новую сборку с последним опубликованным стабильным релизом: обновление Telegram описывается отдельно, а изменения ядра прокси и кода интеграции WSP указываются только при их наличии. Изменения CI, документации и механизма публикации не считаются изменениями функциональности WSP. Генератор и его регрессионные тесты: [write-release-notes.ps1](scripts/write-release-notes.ps1) и [test-release-notes.ps1](scripts/test-release-notes.ps1).
+
 ## Тестирование
 
 Базовые проверки репозитория:

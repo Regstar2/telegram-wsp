@@ -132,6 +132,7 @@ jobs:
         env:
           RELEASE_REVISION: ${{ inputs.revision }}
           REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if ($env:RELEASE_REVISION -notmatch '^\d+$') { throw 'revision must contain decimal digits only.' }
           $upstream = Get-Content 'config/upstream.json' -Raw | ConvertFrom-Json
@@ -171,47 +172,23 @@ jobs:
           }
           [IO.File]::WriteAllText('dist/latest.json', ($latest | ConvertTo-Json -Depth 4) + [Environment]::NewLine)
 
-          $notes = @"
-          # Telegram-WSP $($upstream.telegramVersion)
+          # Determine the last published stable release, excluding the tag being built.
+          # Drafts and prereleases are not a stable WSP changelog baseline.
+          $releaseListJson = & gh release list --repo $env:REPOSITORY --limit 100 --json tagName,isDraft,isPrerelease,publishedAt
+          if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate GitHub releases for the changelog baseline.' }
+          $previousRelease = @(
+            $releaseListJson | ConvertFrom-Json |
+              Where-Object {
+                -not $_.isDraft -and -not $_.isPrerelease -and
+                $_.tagName -match '^v\d+\.\d+\.\d+-wsp\.\d+$' -and
+                $_.tagName -ne $tag
+              } |
+              Sort-Object publishedAt -Descending |
+              Select-Object -First 1
+          )
+          $previousTag = if ($previousRelease.Count -gt 0) { [string]$previousRelease[0].tagName } else { '' }
+          & ./scripts/write-release-notes.ps1 -ReleaseRevision ([int]$env:RELEASE_REVISION) -ApkSha256 $apkSha -Repository $env:REPOSITORY -PreviousReleaseTag $previousTag -CurrentRef $commit
 
-          - Telegram upstream: $($upstream.telegramVersion) ($($upstream.telegramBuild))
-          - Telegram commit: $($upstream.pinnedCommit)
-          - tgwsproxy-core commit: $($core.pinnedCommit)
-          - Android package: org.telegram.messenger.web
-          - APK SHA-256: $apkSha
-          - Release revision: $($env:RELEASE_REVISION)
-
-          ## Telegram-WSP changes
-
-          - Added the built-in proxy control screen in Telegram proxy settings.
-          - Added Auto / Cloudflare Proxy / WARP-AmneziaWG / Cloudflare Worker / Direct routing.
-          - Auto routing: CF Proxy → AWG → Worker → Direct on Wi-Fi; CF Proxy → AWG → Worker on mobile.
-          - Added Cloudflare domain update/check controls.
-          - Added WARP/AmneziaWG profile creation, import, export and deletion.
-          - Added independent Proxy Worker and Amnezia provisioning Worker pools.
-          - Added translations for all built-in locales of the pinned Telegram upstream.
-
-          The APK is signed with the persistent Telegram-WSP release key. Exact source components used to reproduce this build are attached to the release.
-          "@
-          $releaseNotesPath = "docs/releases/$tag.md"
-          $releaseNotesEnPath = "docs/releases/${tag}_EN.md"
-          if ((Test-Path -LiteralPath $releaseNotesPath) -and (Test-Path -LiteralPath $releaseNotesEnPath)) {
-            $notes = @"
-          # Telegram-WSP $($upstream.telegramVersion) (WSP $($env:RELEASE_REVISION))
-
-          Обновлено встроенное ядро прокси и обработка маршрутов Cloudflare Proxy, Worker и MTProto.
-
-          [Полное описание на русском](https://github.com/$env:REPOSITORY/blob/$tag/$releaseNotesPath) · [Full release notes in English](https://github.com/$env:REPOSITORY/blob/$tag/$releaseNotesEnPath)
-
-          - tgwsproxy-core commit: $($core.pinnedCommit)
-          - Telegram upstream: $($upstream.telegramVersion) ($($upstream.telegramBuild))
-          - APK SHA-256: $apkSha
-
-          Signed APK, checksum manifest and exact Corresponding Source are attached.
-          "@
-          }
-
-          [IO.File]::WriteAllText('dist/release-notes.md', $notes.Trim() + [Environment]::NewLine)
 
           $checksumFiles = @(
             Get-ChildItem 'dist' -File |
