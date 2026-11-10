@@ -80,7 +80,55 @@ if ($PreviousReleaseTag -ne '') {
     if ($LASTEXITCODE -ne 0) { throw "Could not compare WSP sources with $PreviousReleaseTag." }
 
     $coreChanged = [string]$priorCore.pinnedCommit -ne [string]$core.pinnedCommit
-    $integrationChanges = @($changedPaths | Where-Object { $_ -ne 'config/core.json' })
+    $integrationChanges = @($changedPaths | Where-Object { $_ -ne 'config/core.json' -and $_ -notmatch '(^|/)README\.md
+
+    $notes.Add('')
+    $notes.Add('## Telegram-WSP changes')
+    $notes.Add('')
+    if (-not $coreChanged -and $integrationChanges.Count -eq 0) {
+        $notes.Add("No WSP proxy core or integration changes since [$PreviousReleaseTag](https://github.com/$Repository/releases/tag/$PreviousReleaseTag).")
+    }
+    else {
+        if ($coreChanged) {
+            $notes.Add("- Updated tgwsproxy-core: $($priorCore.pinnedCommit) → $($core.pinnedCommit).")
+        }
+        if ($integrationChanges.Count -gt 0) {
+            $notes.Add('- Changed WSP integration sources:')
+            foreach ($path in $integrationChanges) {
+                $notes.Add("  - $path")
+            }
+        }
+        $notes.Add("- [Compare repository changes](https://github.com/$Repository/compare/$PreviousReleaseTag...$tag)")
+        $notes.Add('This list identifies changed components, not an inferred list of user-facing features.')
+    }
+}
+else {
+    $notes.Add('First published release in the available history; see the project documentation for Telegram upstream details.')
+    $notes.Add('')
+    $notes.Add('## Telegram-WSP changes')
+    $notes.Add('')
+    $notes.Add('Baseline release. WSP features are documented in the project README.')
+}
+
+$releaseNotesPath = Join-Path $root "docs/releases/$tag.md"
+$releaseNotesEnPath = Join-Path $root "docs/releases/$($tag)_EN.md"
+if ((Test-Path -LiteralPath $releaseNotesPath) -and (Test-Path -LiteralPath $releaseNotesEnPath)) {
+    $notes.Add('')
+    $notes.Add("[Полное описание на русском](https://github.com/$Repository/blob/$tag/docs/releases/$tag.md) · [Full release notes in English](https://github.com/$Repository/blob/$tag/docs/releases/$($tag)_EN.md)")
+}
+
+$notes.Add('')
+$notes.Add('The APK is signed with the persistent Telegram-WSP release key. Exact Corresponding Source, checksums and update feed are attached to this release.')
+
+$absoluteOutputPath = if ([IO.Path]::IsPathRooted($OutputPath)) {
+    $OutputPath
+} else {
+    Join-Path $root $OutputPath
+}
+New-Item -ItemType Directory -Path (Split-Path -Parent $absoluteOutputPath) -Force | Out-Null
+[IO.File]::WriteAllText($absoluteOutputPath, ($notes -join [Environment]::NewLine) + [Environment]::NewLine)
+Write-Host "Release notes: $tag (previous stable: $PreviousReleaseTag)"
+ })
 
     $notes.Add('')
     $notes.Add('## Telegram-WSP changes')
