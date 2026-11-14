@@ -121,6 +121,29 @@ foreach ($submodulePath in $submodulePaths) {
     }
 }
 
+$widgetSandboxSubmodulePath = 'TMessagesProj/jni/twidget/widget-sandbox'
+$widgetSandboxRepository = Join-Path $telegram $widgetSandboxSubmodulePath
+if (Test-Path (Join-Path $widgetSandboxRepository '.gitmodules')) {
+    $quickJsSubmodulePath = 'packages/ios/Sources/CQuickJS/quickjs'
+    $quickJsCommit = Get-SubmoduleCommit -RepositoryPath $widgetSandboxRepository -SubmodulePath $quickJsSubmodulePath
+    $quickJsRepository = Join-Path $widgetSandboxRepository $quickJsSubmodulePath
+    Assert-Head -RepositoryPath $quickJsRepository -Expected $quickJsCommit
+
+    $quickJsArchiveName = "telegram-submodule-quickjs-source-$($quickJsCommit.Substring(0, 12)).zip"
+    $quickJsArchivePath = Join-Path $output $quickJsArchiveName
+    & git -C $quickJsRepository archive --format=zip -o $quickJsArchivePath HEAD
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not archive nested widget-sandbox QuickJS source.'
+    }
+
+    $submoduleArchives += $quickJsArchivePath
+    $telegramSubmodules += [ordered]@{
+        path = "$widgetSandboxSubmodulePath/$quickJsSubmodulePath"
+        commit = $quickJsCommit
+        archive = $quickJsArchiveName
+    }
+}
+
 if ([string]::IsNullOrWhiteSpace($jlatexmathCommit)) {
     throw 'Telegram jlatexmath submodule was not present in the pinned .gitmodules.'
 }
