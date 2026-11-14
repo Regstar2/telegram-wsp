@@ -110,6 +110,20 @@ foreach ($submodule in $submodulePaths) {
     }
 }
 
+# widget-sandbox includes QuickJS as a nested submodule required by twidget.cmake.
+$widgetSandbox = Join-Path $destinationPath 'TMessagesProj/jni/twidget/widget-sandbox'
+if (Test-Path (Join-Path $widgetSandbox '.gitmodules')) {
+    & git -C $widgetSandbox -c core.longpaths=true submodule update --init --depth 1 -- packages/ios/Sources/CQuickJS/quickjs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Failed to initialize widget-sandbox QuickJS submodule.'
+    }
+
+    $quickJsSource = Join-Path $widgetSandbox 'packages/ios/Sources/CQuickJS/quickjs/quickjs.c'
+    if (-not (Test-Path $quickJsSource)) {
+        throw "Telegram submodule build input is missing: $quickJsSource"
+    }
+}
+
 $requiredBuildInputs = @(
     'TMessagesProj/lib/jlatexmath/jlatexmath/build.gradle',
     'TMessagesProj/jni/third_party/libyuv/CMakeLists.txt',

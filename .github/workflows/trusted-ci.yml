@@ -38,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        telegram: [pinned, telegram-13-0-3]
+        telegram: [pinned, telegram-13-0-3, telegram-13-2-2]
 
     steps:
       - name: Checkout
@@ -54,6 +54,16 @@ jobs:
           $upstream.pinnedCommit = '0aae959806c57be8ad457980f2a5c6277ff18635'
           $upstream.telegramVersion = '13.0.3'
           $upstream.telegramBuild = 7183
+          $upstream | ConvertTo-Json -Depth 4 | Set-Content config/upstream.json
+
+      - name: Select Telegram 13.2.2 candidate fixture
+        if: matrix.telegram == 'telegram-13-2-2'
+        shell: pwsh
+        run: |
+          $upstream = Get-Content config/upstream.json -Raw | ConvertFrom-Json
+          $upstream.pinnedCommit = '21f7d109da6ab3506c9e9577f98c6a38771ab335'
+          $upstream.telegramVersion = '13.2.2'
+          $upstream.telegramBuild = 7303
           $upstream | ConvertTo-Json -Depth 4 | Set-Content config/upstream.json
 
       - name: Set up Java
@@ -119,3 +129,24 @@ jobs:
           TELEGRAM_API_ID: '4'
           TELEGRAM_API_HASH: '014b35b6184100b085b0d0572f9b5103'
         run: ./scripts/build-apk.ps1 -SkipPrepare
+
+      - name: Verify Telegram 13.2.2 Corresponding Source
+        if: matrix.telegram == 'telegram-13-2-2'
+        shell: pwsh
+        run: |
+          ./scripts/package-release-source.ps1 -OutputDirectory 'dist/ci-source'
+          $manifest = Get-Content 'dist/ci-source/SOURCE_MANIFEST.json' -Raw | ConvertFrom-Json
+          $expectedPath = 'TMessagesProj/jni/twidget/widget-sandbox/packages/ios/Sources/CQuickJS/quickjs'
+          $entries = @($manifest.telegramSubmodules | Where-Object { $_.path -eq $expectedPath })
+          if ($entries.Count -ne 1) { throw 'QuickJS is missing or duplicated in SOURCE_MANIFEST.json.' }
+          $archive = Join-Path 'dist/ci-source' $entries[0].archive
+          if (-not (Test-Path $archive)) { throw "QuickJS archive not found: $archive" }
+          Add-Type -AssemblyName System.IO.Compression
+          $zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $archive).Path)
+          try {
+            if (-not @($zip.Entries | Where-Object { $_.FullName -eq 'quickjs.c' }).Count) {
+              throw 'Nested QuickJS source archive does not contain quickjs.c.'
+            }
+          } finally {
+            $zip.Dispose()
+          }
