@@ -217,6 +217,13 @@ if ($sourcePackageScript -notmatch 'telegramSubmodules' -or $sourcePackageScript
     throw 'Release source packaging must archive every pinned Telegram submodule declared by .gitmodules.'
 }
 
+if ($sourcePackageScript -notmatch 'packages/ios/Sources/CQuickJS/quickjs' -or
+    $sourcePackageScript -notmatch 'Get-SubmoduleCommit -RepositoryPath \$widgetSandboxRepository' -or
+    $sourcePackageScript -notmatch 'Assert-Head -RepositoryPath \$quickJsRepository' -or
+    $sourcePackageScript -notmatch 'quickJsArchivePath') {
+    throw 'Release source packaging must archive the pinned nested widget-sandbox QuickJS source.'
+}
+
 $releaseWorkflow = Get-Content (Join-Path $root '.github/workflows/release.yml') -Raw
 if ($releaseWorkflow -notmatch 'RELEASE_KEYSTORE_BASE64' -or $releaseWorkflow -notmatch 'build-release\.ps1' -or $releaseWorkflow -notmatch 'gh release create') {
     throw 'Release workflow must restore the signing key, build the APK and publish a GitHub Release.'
