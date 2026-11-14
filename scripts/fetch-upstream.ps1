@@ -117,6 +117,11 @@ if (Test-Path (Join-Path $widgetSandbox '.gitmodules')) {
     if ($LASTEXITCODE -ne 0) {
         throw 'Failed to initialize widget-sandbox QuickJS submodule.'
     }
+
+    $quickJsSource = Join-Path $widgetSandbox 'packages/ios/Sources/CQuickJS/quickjs/quickjs.c'
+    if (-not (Test-Path $quickJsSource)) {
+        throw "Telegram submodule build input is missing: $quickJsSource"
+    }
 }
 
 $requiredBuildInputs = @(
@@ -127,8 +132,7 @@ $requiredBuildInputs = @(
     'TMessagesProj/jni/third_party/xiph/ogg/src/bitwise.c',
     'TMessagesProj/jni/third_party/xiph/opus/include/opus.h',
     'TMessagesProj/jni/third_party/xiph/opusfile/src/opusfile.c',
-    'TMessagesProj/jni/tlottie/include/tlottie.h',
-    'TMessagesProj/jni/twidget/widget-sandbox/packages/ios/Sources/CQuickJS/quickjs/quickjs.c'
+    'TMessagesProj/jni/tlottie/include/tlottie.h'
 )
 foreach ($relativePath in $requiredBuildInputs) {
     $requiredPath = Join-Path $destinationPath $relativePath
