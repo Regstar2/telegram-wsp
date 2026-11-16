@@ -177,6 +177,12 @@ TELEGRAM_API_HASH=<your-api-hash>
 
 Результаты `trusted-ci.yml` подтверждают воспроизводимость overlay и компиляцию, но сами по себе не подтверждают доступность CF, AWG или Worker в сети пользователя. Подробности изменений — в [release notes WSP 3](../docs/releases/v13.1.1-wsp.3.md).
 
+## Обновление CF Proxy для WSP 4
+
+В кандидате `v13.2.2-wsp.4` pinned `tgwsproxy-core` содержит точечный перенос [Android #156](https://github.com/Regstar2/tg-ws-proxy-android/issues/156) из `tg-ws-proxy-android@96b4c8a28c9be277cba2bafec118b47c570e9e25`. Для Cloudflare Proxy (MTProto и SOCKS5) TLS SNI использует базовый домен зоны, а WebSocket HTTP Host сохраняет `kwsN.<domain>`; путь остаётся `/apiws`. При dial по резервному IP оба имени сохраняются раздельно. Direct WS и Cloudflare Worker не меняются.
+
+Регрессионные Go-тесты находятся в `tgwsproxy-core`; Telegram-WSP отдельно проверяет воспроизводимость AAR/overlay и компиляцию Android APK в `trusted-ci.yml`. Прохождение сборки не доказывает доступность CF Proxy в каждой сети. Существующая проблема native WebSocket TLS `InsecureSkipVerify=true` остаётся и отслеживается в [Android #158](https://github.com/Regstar2/tg-ws-proxy-android/issues/158).
+
 ## Release signing
 
 Постоянный release key создаётся один раз:
