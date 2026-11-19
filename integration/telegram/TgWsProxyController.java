@@ -94,6 +94,7 @@ public final class TgWsProxyController {
     private static final String KEY_MANAGED_PROXY = "managed_proxy";
     private static final String KEY_ROUTE_MODE = "route_mode";
     private static final String KEY_CF_MANUAL = "cf_manual_domains";
+    private static final String KEY_CF_PROXY_NO_TLS = "cfproxy_no_tls";
     private static final String KEY_CF_CACHED = "cf_cached_domains";
     private static final String KEY_CF_LAST_CHECK = "cf_last_check";
     private static final String KEY_CF_WORKING = "cf_working";
@@ -146,6 +147,7 @@ public final class TgWsProxyController {
     public static final class UiState {
         public final boolean enabled;
         public final String routeMode;
+        public final boolean cfProxyNoTls;
         public final String status;
         public final String actualBackend;
         public final String lastError;
@@ -159,6 +161,7 @@ public final class TgWsProxyController {
         UiState(
                 boolean enabled,
                 String routeMode,
+                boolean cfProxyNoTls,
                 String status,
                 String actualBackend,
                 String lastError,
@@ -171,6 +174,7 @@ public final class TgWsProxyController {
         ) {
             this.enabled = enabled;
             this.routeMode = routeMode;
+            this.cfProxyNoTls = cfProxyNoTls;
             this.status = status;
             this.actualBackend = actualBackend;
             this.lastError = lastError;
@@ -218,6 +222,7 @@ public final class TgWsProxyController {
         return new UiState(
                 enabled,
                 sanitizeRouteMode(prefs.getString(KEY_ROUTE_MODE, ROUTE_AUTO)),
+                prefs.getBoolean(KEY_CF_PROXY_NO_TLS, true),
                 runtimeState,
                 actualBackend,
                 lastError,
@@ -250,6 +255,12 @@ public final class TgWsProxyController {
         String normalized = sanitizeRouteMode(routeMode);
         prefs(appContext).edit().putString(KEY_ROUTE_MODE, normalized).apply();
         restartIfEnabledAsync(appContext, "TgWsProxyRoute", callback);
+    }
+
+    public static void setCfProxyNoTlsAsync(Context context, boolean noTls, Callback callback) {
+        Context appContext = context.getApplicationContext();
+        prefs(appContext).edit().putBoolean(KEY_CF_PROXY_NO_TLS, noTls).apply();
+        restartIfEnabledAsync(appContext, "TgWsProxyCfNoTls", callback);
     }
 
     public static String setManualCfDomains(Context context, String raw) {
@@ -851,6 +862,7 @@ public final class TgWsProxyController {
         tokens.add("@connection_mode=auto");
         tokens.add("@route_direct_ws=" + bool(allowDirect));
         tokens.add("@route_cf_proxy_ws=" + bool(allowCf));
+        tokens.add("@cfproxy_no_tls=" + bool(prefs.getBoolean(KEY_CF_PROXY_NO_TLS, true)));
         tokens.add("@route_awg_warp=" + bool(allowAwg));
         tokens.add("@route_worker_ws=" + bool(allowWorker));
         tokens.add("@route_tcp_fallback=0");

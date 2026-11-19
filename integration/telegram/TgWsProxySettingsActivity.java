@@ -38,6 +38,7 @@ public class TgWsProxySettingsActivity extends BaseFragment {
     private static final int REQUEST_EXPORT_AWG = 4108;
 
     private TextCheckCell enabledCell;
+    private TextCheckCell cfProxyNoTlsCell;
     private TextSettingsCell statusCell;
     private TextSettingsCell routeCell;
     private TextSettingsCell cfSummaryCell;
@@ -151,6 +152,26 @@ public class TgWsProxySettingsActivity extends BaseFragment {
         ));
 
         addHeader(context, content, "CLOUDFLARE PROXY");
+        cfProxyNoTlsCell = new TextCheckCell(context);
+        cfProxyNoTlsCell.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        cfProxyNoTlsCell.setOnClickListener(v -> {
+            boolean next = !cfProxyNoTlsCell.isChecked();
+            cfProxyNoTlsCell.setChecked(next);
+            TgWsProxyController.setCfProxyNoTlsAsync(context, next, (success, message) -> {
+                if (!success) {
+                    toast(context, message);
+                }
+                refreshUi(context);
+            });
+        });
+        content.addView(cfProxyNoTlsCell, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
+        TextView cfTlsHint = secondaryInfoText(context);
+        cfTlsHint.setText(tr(context, "Включено: WS/80 без шифрования. Выключено: WSS/443 с TLS."));
+        content.addView(cfTlsHint, LayoutHelper.createLinear(
+                LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
+        ));
         cfSummaryCell = settingsCell(context);
         content.addView(cfSummaryCell, LayoutHelper.createLinear(
                 LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT
@@ -369,6 +390,9 @@ public class TgWsProxySettingsActivity extends BaseFragment {
                     routeLabel(context, state.routeMode),
                     true
             );
+        }
+        if (cfProxyNoTlsCell != null) {
+            cfProxyNoTlsCell.setTextAndCheck(tr(context, "Отключить TLS для CF Proxy"), state.cfProxyNoTls, true);
         }
         if (cfSummaryCell != null) {
             cfSummaryCell.setTextAndValue(tr(context, "Домены"), localizeDynamic(context, state.cfSummary), true);
@@ -783,6 +807,8 @@ public class TgWsProxySettingsActivity extends BaseFragment {
 
     private static String trEn(String key) {
         switch (key) {
+            case "Отключить TLS для CF Proxy": return "Disable TLS for CF Proxy";
+            case "Включено: WS/80 без шифрования. Выключено: WSS/443 с TLS.": return "On: unencrypted WS/80. Off: TLS-secured WSS/443.";
             case "ОБНОВЛЕНИЯ": return "UPDATES";
             case "Проверить обновления Telegram-WSP": return "Check for Telegram-WSP updates";
             case "Открыть релизы Telegram-WSP": return "Open Telegram-WSP releases";
