@@ -649,6 +649,13 @@ if (Test-Path (Join-Path $telegramWorktree '.git')) {
     }
 
     $preparedSettings = Get-Content $preparedSettingsPath -Raw
+    if ($preparedController -notmatch 'prefs\.getBoolean\(KEY_CF_PROXY_NO_TLS, true\)' -or
+        $preparedController -notmatch '@cfproxy_no_tls=' -or
+        $preparedController -notmatch 'setCfProxyNoTlsAsync' -or
+        $preparedSettings -notmatch 'cfProxyNoTlsCell\.setTextAndCheck' -or
+        $preparedSettings -notmatch 'setCfProxyNoTlsAsync') {
+        throw 'Prepared Telegram-WSP is missing the default-on Cloudflare WS/80 toggle or runtime mapping.'
+    }
     if ($preparedSettings -notmatch 'Создать' -or
         $preparedSettings -notmatch 'Импорт \.conf' -or
         $preparedSettings -notmatch 'Экспорт \.conf' -or
