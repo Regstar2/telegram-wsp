@@ -1,0 +1,24 @@
+# One-shot release handoff for v13.2.2-wsp.5.
+# This workflow activates only when this specific file first reaches main.
+# Remove it through a separate reviewed PR after publication.
+name: Release WSP 5 once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/release-wsp5-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'Regstar2/telegram-wsp'
+    uses: ./.github/workflows/release.yml
+    with:
+      ref: ${{ github.sha }}
+      revision: '5'
+      prerelease: false
+    secrets: inherit
