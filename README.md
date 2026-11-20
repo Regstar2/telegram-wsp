@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/Regstar2/telegram-wsp?display_name=tag&sort=semver&style=for-the-badge&logo=github&label=release)](../../releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Regstar2/telegram-wsp/trusted-ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI)](../../actions/workflows/trusted-ci.yml)
-[![Platform](https://img.shields.io/badge/platform-Android%206.0%2B-0A7EA4?style=for-the-badge)](#требования)
+[![Platform](https://img.shields.io/badge/platform-Android-0A7EA4?style=for-the-badge)](#требования)
 [![License](https://img.shields.io/github/license/Regstar2/telegram-wsp?style=for-the-badge&label=license)](LICENSE)
 
 [Быстрый старт](#быстрый-старт) ·
@@ -36,21 +36,23 @@ Telegram-WSP использует собственные название, packa
 
 Стадия: **Stable**.
 
-Текущий публичный релиз: **[v13.1.1-wsp.3](../../releases/tag/v13.1.1-wsp.3)** (31 октября 2026 года).
+Текущий публичный релиз на 20 ноября 2026 года: **[v13.2.2-wsp.5](../../releases/tag/v13.2.2-wsp.5)**. Новые сборки всегда доступны по ссылке [Latest release](../../releases/latest).
 
-| Компонент | Текущее состояние |
+| Компонент | Состояние в WSP 5 |
 |---|---|
-| Telegram upstream | 13.1.1, build 7237 |
-| Telegram commit | `3de37c8cfb039452be7398909461da6288babf15` |
-| tgwsproxy-core commit | `515fc50af9797c69722f14409dedcaf96868d9ce` |
+| Telegram upstream | 13.2.2, build 7303 |
+| Telegram commit | `21f7d109da6ab3506c9e9577f98c6a38771ab335` |
+| tgwsproxy-core commit | `d288f6557eab5a621c9f63c34eb9d6fa72fcb4f9` |
 | Android package | `org.telegram.messenger.web` |
-| Встроенный TgWsProxy | Работает через локальный listener |
-| Экран управления прокси | Встроен в настройки прокси Telegram |
-| Подписанный APK | Публикуется через GitHub Releases |
-| Автообновление приложения | Реализовано через GitHub Releases |
-| Upstream sync | Автоматическая проверка DrKLO/Telegram с integration gates |
+| Встроенный прокси | Локальный MTProto listener `127.0.0.1:1443` |
+| Управление маршрутами | Auto, CF Proxy, AWG, Worker, Direct |
+| Cloudflare Proxy | WS/80 без TLS по умолчанию; WSS/443 при выключенном переключателе |
+| Обновления приложения | GitHub Releases и `latest.json` |
+| Синхронизация с Telegram | Проверка upstream, integration gates, отдельная release-сборка |
 
-Релиз `v13.1.1-wsp.3` сохраняет экран управления маршрутами, Cloudflare-домены, WARP/AmneziaWG-профиль и Worker pools. В этой ревизии обновлены обработка полного исчерпания CF domain pool, отмена устаревших попыток CF dial/TLS при смене маршрута, обработка ошибок WebSocket/TLS и Worker transport/failover. Версия Telegram upstream остаётся 13.1.1 (7237). Подписанный APK, контрольные суммы и точные исходные компоненты доступны в [релизе](../../releases/tag/v13.1.1-wsp.3). Подробности: [на русском](docs/releases/v13.1.1-wsp.3.md) и [на английском](docs/releases/v13.1.1-wsp.3_EN.md).
+В WSP 4 ядро обновлено для раздельных TLS SNI и WebSocket Host при работе с CF Proxy. В WSP 5 обновлены ядро и Android integration: добавлен переключатель «Отключить TLS для CF Proxy» с включённым состоянием по умолчанию. Режим WS/80 **не шифрует WebSocket-транспорт TLS**; для WSS/443 переключатель нужно выключить. Настройка не изменяет другие маршруты.
+
+Изменения и исходные компоненты: [WSP 5](docs/releases/v13.2.2-wsp.5.md), [WSP 4](../../releases/tag/v13.2.2-wsp.4), [WSP 3](docs/releases/v13.1.1-wsp.3.md). Подписанный APK, checksums и Corresponding Source опубликованы в [GitHub Releases](../../releases/latest).
 
 ## Возможности
 
@@ -60,6 +62,7 @@ Telegram-WSP использует собственные название, packa
 - режимы маршрутизации **Auto / Cloudflare Proxy / WARP-AmneziaWG / Cloudflare Worker / Direct**;
 - разные цепочки Auto для Wi-Fi и мобильной сети;
 - ввод, обновление и проверка списка Cloudflare-доменов;
+- переключение CF Proxy между WS/80 без TLS (по умолчанию) и WSS/443 с TLS;
 - создание, импорт, экспорт и удаление WARP/AmneziaWG-профиля;
 - независимые списки Worker для Proxy Worker и Amnezia provisioning Worker;
 - локализация встроенного интерфейса для локалей текущей версии Telegram;
@@ -83,7 +86,7 @@ Telegram-WSP использует собственные название, packa
 
 Для готового APK:
 
-- Для текущей Telegram 13.1.1: Android **6.0 / API 23** или новее (итоговый minimumSdk также публикуется в `latest.json`);
+- минимальная версия Android задаётся фактической сборкой Telegram и указывается в поле `minimumSdk` файла [`latest.json`](https://github.com/Regstar2/telegram-wsp/releases/latest/download/latest.json);
 - доступ в интернет;
 - разрешение Android на установку APK не из магазина.
 
@@ -101,7 +104,7 @@ org.telegram.messenger.web
 
 Telegram-WSP использует постоянный release key. Новая версия устанавливается поверх предыдущей Telegram-WSP-сборки только при совпадении package ID и сертификата подписи.
 
-Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит обновить его поверх существующей установки. Для перехода с `v13.1.1-wsp.2` на `v13.1.1-wsp.3` удалять приложение не требуется при совпадении подписи. Не удаляйте установленный клиент ради исправления ошибки подписи без сохранения важных локальных данных.
+Если на устройстве уже установлено приложение с тем же package ID, но другой подписью, Android не позволит обновить его поверх существующей установки. Для обновления с WSP 4 на WSP 5 удалять приложение не требуется при совпадении подписи. Не удаляйте установленный клиент ради исправления ошибки подписи без сохранения важных локальных данных.
 
 ## Использование
 
@@ -138,7 +141,7 @@ Direct намеренно не входит в мобильную Auto-цепо�
 
 ### Cloudflare Proxy
 
-По умолчанию включена опция «Отключить TLS для CF Proxy»: Cloudflare Proxy использует **WS через порт 80 без транспортного шифрования**. Переключатель находится в настройках встроенного прокси Telegram-WSP. Если его выключить, CF Proxy использует **WSS через порт 443 с TLS**. Это не изменяет TLS для Worker, HTTPS-обновлений и остальных маршрутов. Настройка сохраняется и применяется после перезапуска встроенного runtime при изменении.
+В WSP 5 опция «Отключить TLS для CF Proxy» **включена по умолчанию**, если пользователь раньше не сохранял другой выбор. В этом режиме CF Proxy использует **WS/80 без TLS-шифрования WebSocket-транспорта**. Чтобы использовать **WSS/443 с TLS**, выключите опцию в настройках «Встроенный прокси». Выбор сохраняется, а работающий runtime перенастраивается. Настройка относится только к CF Proxy и не меняет Worker, AWG, Direct и HTTPS-проверку обновлений.
 
 Использует настроенный список Cloudflare-доменов. Экран управления позволяет изменить список, подтянуть актуальные домены и проверить их доступность.
 
@@ -318,7 +321,7 @@ Release notes автоматически сравнивают новую сбо�
 Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 
 - выполняет repository checks;
-- воспроизводит Telegram overlay на pinned Telegram 13.1.1 и регрессионном fixture 13.0.3;
+- воспроизводит Telegram overlay на pinned Telegram 13.2.2 и регрессионных fixtures 13.0.3 и 13.2.2;
 - повторно запускает проверки на подготовленном worktree и проверяет отказ при несовместимом SDK anchor;
 - компилирует prototype APK без release-подписи.
 
@@ -331,7 +334,8 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 - [Архитектура](docs/architecture.md) — границы Telegram/core и модель минимального diff;
 - [Integration layer](integration/README.md) — startup path, credentials, branding и build variants;
 - [Исходный MVP scope](docs/product/mvp-scope.md) — исторический план первого прототипа, не перечень всех текущих возможностей;
-- [Релиз WSP 3 (RU)](docs/releases/v13.1.1-wsp.3.md) · [Release notes (EN)](docs/releases/v13.1.1-wsp.3_EN.md) — изменения актуального релиза;
+- [Релиз WSP 5](docs/releases/v13.2.2-wsp.5.md) — текущая версия, CF Proxy WS/80 и переключатель TLS;
+- [Релиз WSP 4](docs/releases/v13.2.2-wsp.4.md) — обновление SNI/Host; [история WSP 3](docs/releases/v13.1.1-wsp.3.md) ([EN](docs/releases/v13.1.1-wsp.3_EN.md));
 - [Лицензирование](docs/licensing.md) — GPL-модель, third-party компоненты и Corresponding Source;
 - [NOTICE.md](NOTICE.md) — third-party notices.
 
@@ -339,9 +343,9 @@ Workflow [trusted-ci.yml](.github/workflows/trusted-ci.yml) на pull request:
 
 ## Если возникла проблема
 
-**APK не устанавливается.** Проверьте Android 6.0+ для текущего релиза и наличие уже установленного `org.telegram.messenger.web` с другой подписью. В последнем случае Android не сможет установить обновление поверх него. Сверьте APK и метаданные с [официальным релизом](../../releases/latest); не удаляйте приложение без учёта возможной потери локальных данных.
+**APK не устанавливается.** Проверьте поле `minimumSdk` в `latest.json` текущего релиза, версию Android и наличие уже установленного `org.telegram.messenger.web` с другой подписью. В последнем случае Android не сможет установить обновление поверх него. Сверьте APK и метаданные с [официальным релизом](../../releases/latest); не удаляйте приложение без учёта возможной потери локальных данных.
 
-**Нет соединения через Cloudflare Proxy.** В настройках «Встроенный прокси» проверьте список доменов и результат их проверки. WSP 3 обрабатывает исчерпание доступного пула, но это не гарантирует наличия рабочего домена в конкретной сети. При необходимости проверьте другой **настроенный** маршрут (AWG или Worker). В мобильном Auto-режиме Direct отсутствует.
+**Нет соединения через Cloudflare Proxy.** Проверьте список доменов, их доступность и состояние «Отключить TLS для CF Proxy». При необходимости проверьте WS/80 и WSS/443 и попробуйте другой **настроенный** маршрут (AWG или Worker). Ни один режим не гарантирует доступность в конкретной сети; в мобильном Auto-режиме Direct отсутствует.
 
 **Не удаётся проверить обновления.** Updater запрашивает GitHub Releases по обычному HTTPS, а не через локальный MTProto proxy. Откройте «Открыть релизы Telegram-WSP» и попробуйте загрузить APK в браузере, если он доступен через другое соединение. Установка всё равно требует подтверждения Android.
 
