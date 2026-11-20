@@ -107,7 +107,7 @@ apply patches/overlay
 build + smoke
 ```
 
-Текущий [upstream-sync.yml](../.github/workflows/upstream-sync.yml) запускается ежедневно. Если найден новый Telegram build/commit, workflow обновляет pin, воспроизводит overlay, выполняет `scripts/ci.ps1` и компилирует prototype APK **до** фиксации нового pin в `main`. При успешной проверке workflow публикует pin и передаёт commit в [release.yml](../.github/workflows/release.yml), где отдельно собирается и публикуется подписанный APK с Corresponding Source. Если сборка публикации сорвалась после фиксации pin, следующий scheduled run может повторить выпуск. Релизы с уже существующим tag не перезаписываются.
+Текущий [upstream-sync.yml](../.github/workflows/upstream-sync.yml) запускается по расписанию. Если найден новый Telegram build/commit, workflow обновляет pin, воспроизводит overlay, выполняет `scripts/ci.ps1` и компилирует prototype APK **до** фиксации нового pin в `main`. При успешной проверке workflow публикует pin и передаёт commit в [release.yml](../.github/workflows/release.yml), где отдельно собирается и публикуется подписанный APK с Corresponding Source. Если сборка публикации сорвалась после фиксации pin, следующий scheduled run может повторить выпуск. Релизы с уже существующим tag не перезаписываются.
 
 Проверка нового upstream не означает автоматического подтверждения работы всех сетевых маршрутов на реальном устройстве.
 
@@ -118,7 +118,7 @@ Integration CI проверяет:
 - отсутствие изменений `TMessagesProj/jni/tgnet/`;
 - лимит в 8 изменённых upstream source-level путей;
 - точное применение overlay с отказом при несовместимом SDK anchor;
-- повторяемость интеграции и prototype APK на pinned upstream и Telegram 13.0.3 regression fixture.
+- повторяемость интеграции и prototype APK на pinned Telegram 13.2.2 и регрессионных fixtures Telegram 13.0.3/13.2.2.
 
 Подписанная release-сборка и установка на устройство — отдельные проверки.
 
@@ -143,7 +143,7 @@ Integration CI проверяет:
 
 ## 10. Текущий overlay
 
-Для Telegram 13.1.1 (7237) используется `tgwsproxy-core` из [`config/core.json`](../config/core.json). Integration layer формирует 8 source-level изменений:
+Для Telegram 13.2.2 (7303) используется `tgwsproxy-core` из [`config/core.json`](../config/core.json). Integration layer формирует 8 source-level изменений:
 
 ```text
 TMessagesProj/build.gradle
@@ -175,8 +175,14 @@ Controller:
 Overlay применяется `scripts/apply-integration.ps1` через точные anchor-замены.
 Если upstream изменит anchor, процесс завершается ошибкой вместо fuzzy merge.
 
-### Надёжность runtime в WSP 3
+### Эволюция runtime: WSP 3–5
 
-В `v13.1.1-wsp.3` обновлён pinned core без изменения границы Telegram/core. В runtime добавлена обработка полного исчерпания Cloudflare domain pool (включая per-DC cooldown/in-flight reservation), отмена устаревших dial/TLS-операций при смене route policy и корректная привязка событий к поколению маршрута. Изменения TLS/WebSocket и Worker transport/failover относятся к core, а не к `tgnet`.
+В WSP 3 обновлённое ядро обрабатывает исчерпание CF domain pool, отменяет устаревшие операции при смене маршрута и улучшает WebSocket/Worker failover. В WSP 4 CF Proxy разделяет TLS SNI (базовый домен) и WebSocket Host (`kwsN.<domain>`) при работе через WSS/443; путь `/apiws` сохраняется.
 
-Это описание поведения кода и релиза, **не доказательство** доступности соответствующих endpoint в любой сети. См. [release notes](releases/v13.1.1-wsp.3.md).
+В опубликованном `v13.2.2-wsp.5` pinned core — `d288f6557eab5a621c9f63c34eb9d6fa72fcb4f9`. `TgWsProxyController` сохраняет выбор `cfproxy_no_tls` в SharedPreferences (по умолчанию `true`) и передаёт его ядру как `@cfproxy_no_tls=1` либо `0`. Переключатель в `TgWsProxySettingsActivity` вызывает реконфигурацию запущенного runtime.
+
+- `1`: CF Proxy использует WebSocket по порту 80 **без TLS**; защита TLS-транспорта отсутствует.
+- `0`: CF Proxy использует WSS/443 с TLS.
+- Настройка не меняет AWG, Worker, Direct или HTTPS-запросы updater.
+
+Точное состояние upstream и core определяют [config/upstream.json](../config/upstream.json) и [config/core.json](../config/core.json). Изменения runtime не требуют патчить `tgnet`, а CI сборки не является проверкой доступности маршрутов в конкретной сети. См. [описание WSP 5](releases/v13.2.2-wsp.5.md).
